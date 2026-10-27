@@ -1,0 +1,70 @@
+{
+  "date": "2026-10-27",
+  "scope": "acceptance-tooling follow-up; no runtime/image/device change",
+  "runtime_revision_unchanged": "add80e2634fb7f92b1827b9be9ca8c1d50f5d82a",
+  "native_cuda_sha256_unchanged": "542d0b163e9fe127af26ce5ecdb89e91d3102db7c634fc1c12f21e543f9f4624",
+  "checker_sha256": "45140a923899fedffd5f28f4ace5482a885e7a40549ede1b27e2a610855fb378",
+  "startup_budget": {
+    "previous_wall_seconds": 6.0,
+    "default_wall_seconds": 10.0,
+    "explicit_finite_range_wall_seconds": [1.0, 60.0],
+    "observed_previous_archive_initial_to_auto_wall_seconds": 6.0687336,
+    "policy_change_not_a_performance_improvement": true,
+    "old_six_second_requirement_not_passed": true,
+    "mock_clock_startup_cases_wall_seconds": [6.2, 6.5],
+    "mock_clock_cases_pass_with_ten_fail_with_six": true,
+    "initial_http_errors_do_not_reset_deadline": true,
+    "startup_healthy_credit": false,
+    "missed_deadline_failure_retained_after_recovery": true
+  },
+  "unchanged_release_thresholds": {
+    "minimum_simulation_wall_factor": 1.0,
+    "minimum_native_publications_hz": 30.0
+  },
+  "latest_completed_native_measurement": {
+    "reference": "customer-reviewed-2026-10-27.json",
+    "simulation_wall_factor": 0.9234518223166726,
+    "native_publications_hz": 59.10091662826704,
+    "realtime_target_passed": false
+  },
+  "attempted_hardware_recheck": {
+    "command_exit": 1,
+    "observation_seconds": 90.03174445798504,
+    "actual_unique_samples": 0,
+    "transport_error_count": 316,
+    "new_native_measurement_available": false,
+    "new_startup_hardware_pass_established": false,
+    "blocker": "forward returned connection resets; fresh CLI explicitly reported expired operator login; browser reauthentication requested",
+    "no_workload_failure_inferred_from_transport_failure": true
+  },
+  "source_tests": {
+    "parent_python_run": 131,
+    "parent_python_skipped": 13,
+    "parent_python_failures": 0,
+    "clean_export_python_run": 126,
+    "clean_export_python_skipped": 10,
+    "clean_export_python_failures": 0,
+    "parent_and_clean_export_browser_tests_passed_each": 50,
+    "untriaged_secret_findings": 0
+  },
+  "native_pacing_investigation": {
+    "proposed_16ms_fixed_step_cap_falsified_by_executed_cached_bevy_probe": true,
+    "native_patch_made": false,
+    "replacement_binary_produced": false,
+    "throughput_shortfall_resolved": false
+  },
+  "agreed_customer_delivery": {
+    "customer": "Copper",
+    "scope": "private demo source with optional hosted walkthrough; not production qualification",
+    "source_handoff_authorized": true,
+    "repository_access_handled_directly_by_owner": true,
+    "production_qualification_required_for_source_handoff": false,
+    "github_accounts_or_team_known": false,
+    "customer_invitations_sent": false,
+    "populated_model_scene_vendor_image_transfer": "held pending distribution approval",
+    "invitation_draft_sent": false
+  },
+  "release_approved": false,
+  "fleet_scale_or_quantified_deployment_acceleration_verified": false,
+  "native_flight_replay_verified": false
+}

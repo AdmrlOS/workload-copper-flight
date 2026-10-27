@@ -1,8 +1,10 @@
-# Customer flight acceptance
+# Demo verification and optional release gates
 
-## Release gate
+This repository is being shared with Copper as **demo source**. Its owner grants repository access directly. The stricter checklist below is for qualifying a deployable release and supporting stronger performance claims; it is not a blocker to the agreed source-only handoff. Existing failed measurements remain documented rather than being relabeled as passes.
 
-Do not call a new source revision customer-ready merely because a prior image booted. Tie every result to the exact Git SHA, native binary SHA256 and immutable image digest.
+## Full release gate
+
+Do not qualify a new runtime image as a production release merely because a prior image booted. Tie every hardware result to the exact runtime Git SHA, native binary SHA256 and immutable image digest.
 
 - [ ] Portable Python and browser-module tests pass from a clean checkout, with actual native observations committed only as explicitly attributed parser fixtures.
 - [ ] Native CPU/software tests establish real changing depth, policy observations, fixed physics steps and bounded telemetry; these are not GPU acceptance.
@@ -16,18 +18,22 @@ Do not call a new source revision customer-ready merely because a prior image bo
 
 ## Reproduce hardware and sustained checks
 
-Set `RELEASE_REVISION` to the exact 40-character runtime source revision from the delivered image/evidence, not a newer documentation-only checkout commit. Connect the authenticated named `web` service as described in [the customer guide](CUSTOMER_GUIDE.md), then:
+Set `RELEASE_REVISION` to the exact 40-character runtime source revision from the delivered image/evidence, not a newer acceptance-tooling/documentation checkout commit. Connect the authenticated named `web` service as described in [the customer guide](CUSTOMER_GUIDE.md), then:
 
 ```sh
 python3 tests/check_image.py --url http://127.0.0.1:18083 --backend cuda \
   --expected-revision "$RELEASE_REVISION" --observe-seconds 5 --timeout 180 \
   --report artifacts/customer-hardware.json
 python3 scripts/check_customer_readiness.py --url http://127.0.0.1:18083 \
-  --expected-revision "$RELEASE_REVISION" --seconds 90 \
+  --expected-revision "$RELEASE_REVISION" --seconds 90 --startup-timeout 10 \
   --report artifacts/customer-readiness.json
 ```
 
 The sustained check uses actual native wall timestamps and distinct source frames; episode clocks are never joined. It requires changing observed depth, policy progress, error-free observation and sufficient measurement coverage. Default thresholds are explicit acceptance targets, not product guarantees. Lowering a threshold must be disclosed and does not establish the original target.
+
+The readiness tool now uses a configurable **10-wall-second** startup/arming budget (`--startup-timeout`, finite 1..60). This intentionally changes the earlier six-second policy, which rejected observed normal arming around 6.069 seconds; it does not retroactively pass that six-second check or improve native throughput. Startup adds no healthy coverage, post-AUTO manual/frozen/stale states still fail, and a missed deadline remains a failed gate even if later progress resumes. The 1.0× native-time and 30 Hz source targets are unchanged.
+
+For the agreed **hosted Copper walkthrough plus private source**, follow [the partner brief](COPPER_PARTNER_DEMO.md). This is an evaluation preview with the failed realtime result disclosed, not a waiver of these release gates. A screen-shared walkthrough does not require customer registry credentials or transfer of model/vendor files; direct customer access and any populated-image delivery remain separately gated.
 
 ## Evidence and known limits
 

@@ -12,8 +12,11 @@ A native edge-autonomy demonstration with a browser mission monitor. Copper runs
 2. [Acceptance checklist](docs/ACCEPTANCE.md): evidence required for the exact delivered revision/image, performance measurement and known limits.
 3. [Native telemetry contract](native-contract.md): units, clocks, recording modes and evidence semantics.
 4. [Third-party notices](THIRD_PARTY_NOTICES.md): source provenance and unresolved asset/model distribution permissions.
+5. [Copper partner demonstration](docs/COPPER_PARTNER_DEMO.md): agreed hosted/private-source scope, presenter walkthrough, access checklist and an unsent invitation draft.
 
-**Release status:** the reviewed private evaluation image has verified Jetson CUDA/NVIDIA execution, depth/UI checks and a 90-second measurement. It achieved **0.92345× real time and 59.10 genuine source samples/s**, so the strict ≥1.0× realtime gate remains **FAILED**. The checker's six-second arming deadline also rejected observed episode startup and requires alignment/re-verification. See [exact tested source/image identity and all failed gates](CUSTOMER_RELEASE.md); this is **not a passed customer release**. Native flight replay/recomputation is **NOT IMPLEMENTED**; recorded browser playback must not be presented as replay verification.
+**Demo status:** prepared for private source sharing with the Copper team. The tested Jetson image demonstrated native CUDA policy execution, NVIDIA Vulkan depth, Live/Recorded UI and completed telemetry downloads. Its measured **0.92345× simulation/wall time and 59.10 genuine source samples/s** are demo results, not a realtime or fleet-scale qualification. See [exact tested identity and measured limits](CUSTOMER_RELEASE.md). Recorded flight playback visualizes telemetry; it does not implement native flight replay.
+
+The repository owner will grant Copper access directly. Production-style performance gates are not a prerequisite for this demo-source handoff. Model/scene bundles, native binaries, credentials and operator artifacts are excluded; populated-image transfer remains separate from source sharing.
 
 ## Tests without GPU or proprietary model assets
 

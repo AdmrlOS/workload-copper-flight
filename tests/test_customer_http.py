@@ -10,11 +10,11 @@ from unittest.mock import patch
 
 from test_acceptance_http import fixture_server
 from test_customer_acceptance import module
-from test_customer_observation import Clock, REVISION
+from test_customer_observation import Clock, REVISION, observe_lifecycle
 
 
 class CustomerHttpTests(unittest.TestCase):
-    def run_main(self, check, url, directory):
+    def run_main(self, check, url, directory, extra_args=()):
         target = Path(directory) / 'report.json'
         old = {'passed': True, 'old': 'test fixture'}
         target.write_text(json.dumps(old))
@@ -22,7 +22,7 @@ class CustomerHttpTests(unittest.TestCase):
         def sleep(_):
             clock.now += 10
         args = ['check', '--url', url, '--expected-revision', REVISION,
-                '--seconds', '10', '--report', str(target)]
+                '--seconds', '10', '--report', str(target), *extra_args]
         with target.open() as old_handle, patch('sys.argv', args), \
                 patch.object(check.time, 'monotonic', side_effect=lambda: clock.now), \
                 patch.object(check.time, 'sleep', side_effect=sleep), \
@@ -35,6 +35,35 @@ class CustomerHttpTests(unittest.TestCase):
             self.assertEqual(json.load(old_handle), old, 'report must be atomically replaced')
         self.assertEqual(list(Path(directory).iterdir()), [target])
         return report
+
+    def test_cli_startup_timeout_default_override_and_report_agree(self):
+        for extra_args, budget in (([], 10.0), (['--startup-timeout', '6'], 6.0)):
+            check = module()
+            report = observe_lifecycle(seconds=90, cold_delay_s=6.5 - 4 / 1.1,
+                                       startup_timeout=budget)
+            with self.subTest(budget=budget), tempfile.TemporaryDirectory() as directory:
+                target = Path(directory) / 'report.json'
+                args = ['check', '--url', 'http://localhost', '--expected-revision', REVISION,
+                        '--seconds', '90', '--report', str(target), *extra_args]
+                with patch('sys.argv', args), patch.object(check, 'observe', return_value=report) as observe, \
+                        contextlib.redirect_stdout(io.StringIO()) as stdout:
+                    self.assertEqual(check.main(), 0 if budget == 10 else 1)
+                observe.assert_called_once_with('http://localhost', REVISION, 90.0, 1.0, 30.0,
+                                                startup_timeout=budget)
+                self.assertEqual(json.loads(target.read_text()), report)
+                self.assertEqual(json.loads(stdout.getvalue()), report)
+                self.assertEqual(report['required_startup_timeout_s'], budget)
+
+    def test_cli_invalid_startup_budget_replaces_previous_pass_without_http(self):
+        for invalid in ('0', '.99', '60.01', 'nan', 'inf', '-inf'):
+            check = module()
+            with self.subTest(invalid=invalid), tempfile.TemporaryDirectory() as directory, \
+                    patch.object(check, 'read_json') as read:
+                report = self.run_main(check, 'http://localhost', directory,
+                                       [f'--startup-timeout={invalid}'])
+                self.assertIn('startup', report['error'])
+                self.assertIn('1..60', report['error'])
+                read.assert_not_called()
 
     def test_cli_transport_errors_replace_previous_pass_atomically(self):
         payloads = [

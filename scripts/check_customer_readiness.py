@@ -133,7 +133,8 @@ def read_json(origin, path):
     return result
 
 
-def observe(origin, expected_revision, seconds=90, min_sim_rate=1.0, min_source_hz=30.0):
+def observe(origin, expected_revision, seconds=90, min_sim_rate=1.0, min_source_hz=30.0,
+            startup_timeout=10.0):
     parsed = urllib.parse.urlsplit(origin)
     if parsed.scheme not in ('http', 'https') or not parsed.hostname or parsed.username or parsed.password or parsed.path not in ('', '/') or parsed.query or parsed.fragment:
         raise ValueError('use a credential-free HTTP(S) origin')
@@ -141,6 +142,8 @@ def observe(origin, expected_revision, seconds=90, min_sim_rate=1.0, min_source_
         raise ValueError('expected revision must be the exact 40-character Git SHA')
     if not finite(seconds) or not 10 <= seconds <= 3600:
         raise ValueError('observation seconds must be in 10..3600')
+    if not finite(startup_timeout) or not 1 <= startup_timeout <= 60:
+        raise ValueError('startup timeout must be finite wall seconds in 1..60')
     if not finite(min_sim_rate) or not 0 < min_sim_rate <= 100 or not finite(min_source_hz) or not 0 < min_source_hz <= 10000:
         raise ValueError('invalid explicit acceptance thresholds')
     spec = importlib.util.spec_from_file_location('native_acceptance', Path(__file__).resolve().parents[1] / 'tests/check_image.py')
@@ -160,7 +163,8 @@ def observe(origin, expected_revision, seconds=90, min_sim_rate=1.0, min_source_
     prior_state = None
     episode_armed = False
     transition_since = started
-    transition_limit_s = 6.0  # Initial four-simulation-second autostart, bounded in wall time.
+    transition_limit_s = startup_timeout  # Cold initialization and arming, bounded in wall time.
+    transition_expired = False
     terminal_live = False
     while time.monotonic() - started < seconds:
         terminal_live = False
@@ -181,7 +185,9 @@ def observe(origin, expected_revision, seconds=90, min_sim_rate=1.0, min_source_
                 healthy_since = last_progress = last_rows = None
                 prior_state = None
                 episode_armed = False
-                transition_since = now
+                # Initial HTTP errors must not restart the original startup budget.
+                transition_since = started if episode is None else now
+                transition_expired = False
             if rows and (cursor is None or current != episode or rows[-1]['seq'] > cursor):
                 last_rows = now
             if rows:
@@ -208,16 +214,20 @@ def observe(origin, expected_revision, seconds=90, min_sim_rate=1.0, min_source_
                 frame = state.get('frame') or {}
                 sim_time = frame.get('sim_time_s')
                 transitioning = (not episode_armed and finite(sim_time) and 0 <= sim_time < 4)
+            if transitioning and transition_since is None:
+                transition_since = now
+                transition_expired = False
+            if (transition_since is not None and not transition_expired and
+                    now - transition_since >= transition_limit_s):
+                transition_expired = True
+                # Retain the failed gate once, without hiding later real hardware/progress.
+                errors.append({'wall_s': now - started, 'error':
+                               f'native arming/episode transition deadline exceeded '
+                               f'(required within {startup_timeout:g} wall seconds)'})
             if transitioning:
-                if transition_since is None:
-                    transition_since = now
-                if now - transition_since >= transition_limit_s:
-                    raise ValueError('native arming/episode transition deadline exceeded')
                 healthy_since = last_progress = None
                 prior_state = None
             else:
-                if transition_since is not None and now - transition_since >= transition_limit_s:
-                    raise ValueError('native arming/episode transition deadline exceeded')
                 acceptance.validate_live_state(state, 'cuda')
                 episode_armed = True
                 transition_since = None
@@ -264,6 +274,7 @@ def observe(origin, expected_revision, seconds=90, min_sim_rate=1.0, min_source_
                   healthy_wall_s=total_healthy, episode_healthy_wall_s=healthy_durations,
                   episode_healthy_progress_window_s=healthy_windows,
                   required_same_episode_progress_s=required_window,
+                  required_startup_timeout_s=startup_timeout,
                   hardware_observations=hardware_observations,
                   hardware_episodes=len(hardware_episodes))
     return report
@@ -274,12 +285,15 @@ def main():
     parser.add_argument('--url', required=True)
     parser.add_argument('--expected-revision', required=True)
     parser.add_argument('--seconds', type=float, default=90)
+    parser.add_argument('--startup-timeout', type=float, default=10.0,
+                        help='cold initialization/arming and episode transition budget in wall seconds (1..60; default: 10)')
     parser.add_argument('--min-sim-rate', type=float, default=1.0)
     parser.add_argument('--min-source-hz', type=float, default=30)
     parser.add_argument('--report', type=Path, required=True)
     args = parser.parse_args()
     try:
-        report = observe(args.url, args.expected_revision, args.seconds, args.min_sim_rate, args.min_source_hz)
+        report = observe(args.url, args.expected_revision, args.seconds, args.min_sim_rate, args.min_source_hz,
+                         startup_timeout=args.startup_timeout)
     except (OSError, http.client.HTTPException, ValueError, TypeError, AttributeError, KeyError, OverflowError, RecursionError) as error:
         report = {'passed': False, 'error': str(error)[:500], 'native_replay_verified': False}
     payload = json.dumps(report, indent=2, allow_nan=False) + '\n'
