@@ -71,8 +71,12 @@ test('chase framing follows an observed position without changing the vehicle po
   const actual = pose(10);
   const before = structuredClone(actual);
   const view = poses.chaseView(actual);
-  assert.deepEqual(view.position, { x: actual.position.x + 0.9, y: actual.position.y + 0.6, z: actual.position.z + 2.4 });
-  assert.deepEqual(view.target, { x: actual.position.x, y: actual.position.y + 0.25, z: actual.position.z - 1.6 });
+  assert.ok(view.position.y >= 37, 'Camera clears the pinned forest canopy (maximum height below 29 m)');
+  assert.ok(view.position.x > actual.position.x + 5);
+  assert.ok(view.position.z > actual.position.z + 10);
+  assert.deepEqual(view.target, actual.position, 'Frame the measured vehicle, not a point ahead of it');
+  const high = pose(20); high.position.y = 80;
+  assert.ok(poses.chaseView(high).position.y > high.position.y);
   assert.deepEqual(actual, before);
   assert.equal(poses.chaseView(null), null);
 });

@@ -54,14 +54,14 @@
 
     <section class="panel scene-panel" id="scene" aria-labelledby="scene-title">
       <div class="panel-heading"><h2 id="scene-title"><span class="section-number">3D /</span> Native scene observation</h2><span class="square-label">Browser WebGL2 · not a video feed</span></div>
-      <div class="scene-toolbar"><p><span class="scene-key" aria-hidden="true"></span> Native sampled path <span class="toolbar-divider">/</span> <span id="scene-camera">Chase pose</span> · Y-up</p><div><span class="eyebrow">View controls only</span><button id="chase-camera" type="button" aria-pressed="true" disabled>Chase pose</button><button id="frame-vehicle" type="button" disabled>Frame vehicle</button><button id="reset-scene" type="button">Reset scene view</button></div></div>
+      <div class="scene-toolbar"><p><span class="scene-key" aria-hidden="true"></span> Native path + position ring <span class="toolbar-divider">/</span> <span id="scene-camera">Chase pose</span> · Y-up</p><div><span class="eyebrow">View controls only</span><button id="chase-camera" type="button" aria-pressed="true" disabled>Chase pose</button><button id="frame-vehicle" type="button" disabled>Frame vehicle</button><button id="reset-scene" type="button">Reset scene view</button></div></div>
       <div class="scene-canvas" id="scene-canvas" data-source="paused" data-assets="loading">
         <div class="scene-corner"><span class="eyebrow">Forest / Copper</span><span id="scene-sample">No vehicle pose displayed</span></div>
         <div class="scene-overlay" id="scene-overlay"><p class="eyebrow">Native source required</p><h3 id="scene-overlay-title">Waiting for native pose</h3><p id="scene-overlay-detail">The forest can be explored without telemetry. No vehicle is placed until actual native position and orientation arrive.</p></div>
         <p class="scene-help">Drag to orbit · wheel / pinch to zoom · right-drag to pan</p>
       </div>
       <div class="scene-status"><span id="scene-source">Source not connected</span><span id="scene-assets">Local assets pending</span><span id="scene-trace">0 / 256 observed points</span></div>
-      <p class="panel-note">Browser rendering only. Physics and inference run in the native Copper process. Visualization interpolates between actual samples with a 200 ms presentation delay; never extrapolates. Pose freezes if source progress stops. Camera movement does not control the simulation.</p>
+      <p class="panel-note">Browser rendering only. Physics and inference run in the native Copper process. Visualization interpolates between actual samples with a 200 ms presentation delay; never extrapolates. Pose freezes if source progress stops. Camera movement does not control the simulation. The blue ring annotates the measured vehicle position; the quadcopter model remains true scale.</p>
     </section>
 
     <div class="overview-grid">

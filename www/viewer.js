@@ -53,8 +53,8 @@ export async function createViewer(getSnapshot) {
   controls.minDistance = 0.4;
   controls.maxDistance = 180;
   const resetCamera = () => {
-    camera.position.set(-24, 21, 32);
-    controls.target.set(0, 1, 0);
+    camera.position.set(-60, 75, 95);
+    controls.target.set(0, 1, -40);
     controls.update();
   };
   resetCamera();
@@ -67,6 +67,14 @@ export async function createViewer(getSnapshot) {
   const vehicle = new THREE.Group();
   vehicle.visible = false;
   scene.add(vehicle);
+  // Annotation at the measured position; the 12 cm GLB is never enlarged.
+  const poseMarker = new THREE.Mesh(
+    new THREE.RingGeometry(0.6, 0.75, 32),
+    new THREE.MeshBasicMaterial({ color: 0x2152ee, side: THREE.DoubleSide, depthTest: false, depthWrite: false }),
+  );
+  poseMarker.visible = false;
+  poseMarker.renderOrder = 3;
+  scene.add(poseMarker);
   const traceGeometry = new THREE.BufferGeometry();
   const tracePoints = new Float32Array(256 * 3);
   traceGeometry.setAttribute('position', new THREE.BufferAttribute(tracePoints, 3));
@@ -95,9 +103,7 @@ export async function createViewer(getSnapshot) {
   canvas.addEventListener('webglcontextrestored', () => { contextLost = false; });
   const focusVehicle = () => {
     if (!vehicle.visible) return;
-    controls.target.copy(vehicle.position);
-    camera.position.copy(vehicle.position).add(new THREE.Vector3(0.75, 0.55, 1.1));
-    controls.update();
+    followVehicle();
   };
   const followVehicle = () => {
     const view = chaseView({ position: vehicle.position });
@@ -167,6 +173,11 @@ export async function createViewer(getSnapshot) {
       else if (assetError) announce('Scene unavailable', assetError);
       else if (!assetsReady) announce('Loading local scene assets', 'Fetching the forest and quadcopter GLBs from this workload.');
       else announce(vehicle.visible ? 'Native source paused' : 'Waiting for native pose', `${connection.reason}. Static scene only until fresh native position and quaternion are available.`);
+    }
+    poseMarker.visible = vehicle.visible;
+    if (vehicle.visible) {
+      poseMarker.position.copy(vehicle.position);
+      poseMarker.quaternion.copy(camera.quaternion);
     }
     focusButton.disabled = !vehicle.visible;
     chaseButton.disabled = !vehicle.visible;

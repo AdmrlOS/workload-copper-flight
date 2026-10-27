@@ -60,8 +60,9 @@ export function chaseView(pose) {
   if (!pose?.position) return null;
   const p = pose.position;
   return {
-    position: { x: p.x + 0.9, y: p.y + 0.6, z: p.z + 2.4 },
-    target: { x: p.x, y: p.y + 0.25, z: p.z - 1.6 },
+    // Pinned forest maximum Y is 28.9794 m. Keep the camera above its canopy.
+    position: { x: p.x + 12, y: Math.max(37, p.y + 16), z: p.z + 22 },
+    target: { x: p.x, y: p.y, z: p.z },
   };
 }
 
