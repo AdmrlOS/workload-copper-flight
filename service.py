@@ -754,7 +754,7 @@ def stream_file(source, destination, size):
         remaining -= len(data)
 
 
-STATIC_SUFFIXES = {".html", ".js", ".css", ".svg", ".png", ".jpg", ".jpeg", ".ico", ".woff", ".woff2", ".ttf"}
+STATIC_SUFFIXES = {".html", ".js", ".css", ".svg", ".png", ".jpg", ".jpeg", ".webp", ".ico", ".woff", ".woff2", ".ttf"}
 
 
 def static_inventory(root):
