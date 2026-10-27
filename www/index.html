@@ -6,135 +6,64 @@
   <meta name="theme-color" content="#090d26">
   <meta name="color-scheme" content="light">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
-  <title>Native flight monitor · Admiral</title>
+  <title>Admiral × Copper — Flight lab</title>
   <link rel="icon" href="./assets/admiral-icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./styles.css">
   <script type="module" src="./app.js"></script>
 </head>
 <body>
-  <a class="skip-link" href="#main">Skip to runtime status</a>
-  <aside class="sidebar" aria-label="Workload navigation">
-    <div class="brand"><img src="./assets/admiral-logo-light.svg" width="148" height="33" alt="Admiral"></div>
-    <p class="eyebrow sidebar-kicker">Workload monitor</p>
-    <nav aria-label="Monitor sections">
-      <a href="#overview"><span>01</span> Overview <span class="nav-arrow" aria-hidden="true">↗</span></a>
-      <a href="#telemetry"><span>02</span> Flight telemetry</a>
-      <a href="#inference"><span>03</span> Inference</a>
-      <a href="#recordings"><span>04</span> Recordings</a>
-      <a href="#runtime"><span>05</span> Runtime source</a>
-    </nav>
-    <div class="sidebar-bottom">
-      <span class="square-label">Simulation only</span>
-      <p>No physical actuation.<br>No drone or camera required.</p>
-      <p class="eyebrow">Read-only surface</p>
-    </div>
-  </aside>
-
-  <main id="main" tabindex="-1">
-    <header class="masthead" id="overview">
-      <div class="masthead-top"><p class="eyebrow">Admiral / Demos / Copper</p><p class="eyebrow target-label">Edge runtime → browser monitor</p></div>
-      <div class="title-row"><div><h1>Native flight monitor<span class="period">.</span></h1><p class="subtitle">Native Copper compute. Observed 3D scene in browser WebGL2.</p></div><div class="title-tags"><span class="square-label readonly">Simulation only</span><span class="square-label readonly">Read only</span></div></div>
-    </header>
-
-    <section class="status-band" aria-labelledby="status-label" data-health="connecting" id="status-band">
-      <div class="status-primary" role="status" aria-live="polite" aria-atomic="true">
-        <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span> Native telemetry</p>
-        <h2 id="status-label">Connecting to monitor</h2>
-        <p id="status-detail">Waiting for a valid response from the local runtime.</p>
-      </div>
-      <dl class="status-metrics">
-        <div><dt>Frame sequence</dt><dd id="frame-seq">—</dd></div>
-        <div><dt>Frame age <span class="unit">s</span></dt><dd id="frame-age">—</dd></div>
-        <div><dt>Uptime <span class="unit">s</span></dt><dd id="uptime">—</dd></div>
-      </dl>
-      <div class="status-foot"><span>Runtime reports <strong id="runtime-status">unknown</strong></span><span id="progress-note">No progress observed</span><span>API poll 5 Hz · stale ≥ 2 s</span></div>
+  <a class="skip-link" href="#copper-inspector">Skip to Copper data</a>
+  <header class="masthead">
+    <div class="partners"><img src="./assets/admiral-logo-light.svg" width="143" height="32" alt="Admiral"><span class="partner-cross" aria-hidden="true">×</span><span class="copper-wordmark">Copper<span class="copper-dot">.</span></span></div>
+    <div class="project-title"><h1>Flight lab</h1><span>Native compute. Observable flight.</span></div>
+    <span class="header-note">Simulation only <span aria-hidden="true">/</span> Read only</span>
+  </header>
+  <main id="main">
+    <section class="sourcebar" aria-label="Visualization source">
+      <div class="mode-switch" role="group" aria-label="Visualization mode"><button id="mode-live" type="button" aria-pressed="true"><span class="live-dot" aria-hidden="true"></span>Live</button><button id="mode-recorded" type="button" aria-pressed="false">Recorded</button></div>
+      <div class="source-description"><strong id="mode-title">Live native telemetry</strong><span id="source-subtitle">Waiting for the native source · no browser simulation</span></div>
+      <div class="mission-picker" id="mission-picker" hidden><label class="sr-only" for="mission-select">Completed native mission</label><select id="mission-select"><option value="">No completed missions reported</option></select><button id="load-mission" type="button" disabled>Open mission ↗</button></div>
+      <div class="connection" id="connection" data-health="waiting"><span class="status-dot" aria-hidden="true"></span><span id="connection-label" role="status">Connecting</span></div>
     </section>
-    <noscript><p class="notice">JavaScript is required to read local runtime telemetry. No live data is displayed.</p></noscript>
-    <p id="error-detail" class="notice error-notice" role="alert" hidden></p>
-
-    <section class="panel scene-panel" id="scene" aria-labelledby="scene-title">
-      <div class="panel-heading"><h2 id="scene-title"><span class="section-number">3D /</span> Native scene observation</h2><span class="square-label">Browser WebGL2 · not a video feed</span></div>
-      <div class="scene-toolbar"><p><span class="scene-key" aria-hidden="true"></span> Native path + position ring <span class="toolbar-divider">/</span> <span id="scene-camera">Chase pose</span> · Y-up</p><div><span class="eyebrow">View controls only</span><button id="chase-camera" type="button" aria-pressed="true" disabled>Chase pose</button><button id="frame-vehicle" type="button" disabled>Frame vehicle</button><button id="reset-scene" type="button">Reset scene view</button></div></div>
-      <div class="scene-canvas" id="scene-canvas" data-source="paused" data-assets="loading">
-        <div class="scene-corner"><span class="eyebrow">Forest / Copper</span><span id="scene-sample">No vehicle pose displayed</span></div>
-        <div class="scene-overlay" id="scene-overlay"><p class="eyebrow">Native source required</p><h3 id="scene-overlay-title">Waiting for native pose</h3><p id="scene-overlay-detail">The forest can be explored without telemetry. No vehicle is placed until actual native position and orientation arrive.</p></div>
-        <p class="scene-help">Drag to orbit · wheel / pinch to zoom · right-drag to pan</p>
-      </div>
-      <div class="scene-status"><span id="scene-source">Source not connected</span><span id="scene-assets">Local assets pending</span><span id="scene-trace">0 / 256 observed points</span></div>
-      <p class="panel-note">Browser rendering only. Physics and inference run in the native Copper process. Visualization interpolates between actual samples with a 200 ms presentation delay; never extrapolates. Pose freezes if source progress stops. Camera movement does not control the simulation. The blue ring annotates the measured vehicle position; the quadcopter model remains true scale.</p>
-    </section>
-
-    <div class="overview-grid">
-      <section class="panel telemetry-panel" id="telemetry" aria-labelledby="telemetry-title">
-        <div class="panel-heading"><h2 id="telemetry-title"><span class="section-number">01 /</span> Flight telemetry</h2><span class="eyebrow" id="telemetry-validity">Awaiting frame</span></div>
-        <div class="flight-flags">
-          <div><span class="eyebrow">Armed</span><strong id="armed" class="flag" data-value="unknown">Unknown</strong></div>
-          <div><span class="eyebrow">AUTO</span><strong id="auto-enabled" class="flag" data-value="unknown">Unknown</strong></div>
-          <div><span class="eyebrow">Flight mode</span><strong id="flight-mode">—</strong></div>
+    <div class="workspace">
+      <section class="flight-stage" aria-label="Flight visualization">
+        <div class="scene-canvas" id="scene-canvas" data-source="paused" data-assets="loading">
+          <div class="scene-heading"><p class="eyebrow">01 / Native mission</p><h2>Through the forest.</h2><p id="scene-source">Waiting for native telemetry</p><strong class="capture-banner" id="capture-mode" hidden></strong></div>
+          <div class="view-controls" role="group" aria-label="Camera controls"><button id="chase-camera" type="button" aria-pressed="true" disabled>Follow</button><button id="frame-vehicle" type="button" disabled>Frame</button><button id="reset-scene" type="button">Overview</button></div>
+          <div class="vehicle-cue" id="vehicle-cue" hidden><span class="reticle" aria-hidden="true"></span><span class="vehicle-caption">VEHICLE POSITION<small>True-scale model · screen-space cue</small></span></div>
+          <div class="scene-overlay" id="scene-overlay"><p class="eyebrow">Source / scene</p><h3 id="scene-overlay-title">Loading the flight scene</h3><p id="scene-overlay-detail">Local forest and quadcopter geometry. A vehicle is placed only when actual native position and attitude are available.</p></div>
+          <div class="scene-bottom"><span id="scene-camera">Follow pose</span><span id="scene-sample">No vehicle pose displayed</span><span>Y-up · drag to orbit · scroll to zoom</span></div>
         </div>
-        <table class="vector-table" aria-describedby="coordinate-note">
-          <caption class="sr-only">Position and velocity reported by the native simulation</caption>
-          <thead><tr><th scope="col">Native coordinates</th><th scope="col">X</th><th scope="col">Y</th><th scope="col">Z</th></tr></thead>
-          <tbody>
-            <tr><th scope="row">Position <span class="unit">m</span></th><td id="position-x">—</td><td id="position-y">—</td><td id="position-z">—</td></tr>
-            <tr><th scope="row">Velocity <span class="unit">m/s</span></th><td id="velocity-x">—</td><td id="velocity-y">—</td><td id="velocity-z">—</td></tr>
-          </tbody>
-        </table>
-        <dl class="telemetry-meta"><div><dt>Simulation time</dt><dd><span id="sim-time">—</span> <span class="unit">s</span></dd></div><div><dt>Observed world</dt><dd id="observed-world">Unknown</dd></div><div><dt>Frame schema</dt><dd id="frame-schema">—</dd></div></dl>
-        <dl class="rotation-row"><dt>Quaternion <span class="unit">x / y / z / w</span></dt><dd><span id="rotation-x">—</span> / <span id="rotation-y">—</span> / <span id="rotation-z">—</span> / <span id="rotation-w">—</span></dd></dl>
-        <p class="panel-note" id="coordinate-note">Native Bevy X / Y / Z, Y-up, as reported. Values remain unknown until a usable frame arrives.</p>
+        <div class="flight-caption"><span><i class="line-key" aria-hidden="true"></i>Observed flight path <span id="scene-trace">0 samples</span></span><span id="scene-assets">Local GLBs loading</span><span>WebGL visualization · not a camera feed</span></div>
+        <section class="transport" aria-label="Simulation timeline">
+          <div class="transport-heading"><div><p class="eyebrow">Simulation time / seconds</p><strong id="clock-time">—</strong><span class="clock-end" id="clock-end"></span></div><div class="transport-actions"><button type="button" id="restart" aria-label="Restart recorded visualization" disabled>↤</button><button type="button" id="play-pause" disabled>Play</button><label class="sr-only" for="playback-rate">Playback speed in simulation time</label><select id="playback-rate" disabled><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1× sim time</option><option value="2">2×</option></select><span class="live-transport-note" id="transport-source">LIVE / buffered observations</span></div></div>
+          <div class="timeline-track"><svg id="altitude-chart" viewBox="0 0 1000 36" preserveAspectRatio="none" role="img" aria-label="Observed Y position over simulation time"><path id="altitude-path" d=""></path></svg><label class="sr-only" for="timeline">Recorded mission simulation time</label><input id="timeline" type="range" min="0" max="1" value="0" step="0.001" disabled></div>
+          <div class="timeline-caption"><span id="timeline-start">—</span><span id="timeline-detail">Y position · observed source samples only</span><span id="timeline-end">—</span></div>
+        </section>
       </section>
-
-      <section class="panel execution-panel" aria-labelledby="execution-title">
-        <div class="panel-heading"><h2 id="execution-title"><span class="section-number">02 /</span> Execution boundary</h2></div>
-        <div class="display-summary"><p class="eyebrow blue">Native compute → browser scene</p><h3>Compute stays native.</h3><p>Copper runs the simulation and policy natively. This browser renders observed poses in WebGL2; it does not execute the native runtime.</p></div>
-        <dl class="definition-list execution-data">
-          <div><dt>Native engine</dt><dd id="native-engine">Unknown</dd></div>
-          <div><dt>Graphics backend</dt><dd id="graphics-backend">Unknown</dd></div>
-          <div><dt>Graphics adapter</dt><dd id="graphics-adapter">Unknown</dd></div>
-        </dl>
-        <p class="panel-note">No video stream or physical actuation. A connected host display may also show the native renderer; display connection is not verified here.</p>
-      </section>
+      <aside class="inspector" id="copper-inspector" aria-label="Copper data inspector" tabindex="-1">
+        <div class="inspector-header"><div><p class="eyebrow blue">02 / Copper data</p><h2>Inside the flight.</h2></div><span id="frame-seq" class="sample-number">SEQ —</span></div>
+        <div class="inspector-scroll">
+          <section class="data-section observed-section"><div class="section-heading"><h3>Observed state</h3><span id="telemetry-validity">No source frame</span></div><div class="flight-flags"><span id="flight-mode">Mode unavailable</span><span id="armed">Arming unavailable</span><span id="auto-enabled">Autonomy unavailable</span></div>
+            <table class="vector-table"><caption class="sr-only">Actual native source frame coordinates; not interpolated values</caption><thead><tr><th>Native axes</th><th>X</th><th>Y ↑</th><th>Z</th></tr></thead><tbody><tr><th>Position <small>m</small></th><td id="position-x">—</td><td id="position-y">—</td><td id="position-z">—</td></tr><tr><th>Velocity <small>m/s</small></th><td id="velocity-x">—</td><td id="velocity-y">—</td><td id="velocity-z">—</td></tr></tbody></table>
+            <div class="attitude"><span>Attitude <small>quaternion x/y/z/w</small></span><output id="rotation">Unavailable</output></div>
+          </section>
+          <section class="data-section"><div class="section-heading"><h3>Observation → prediction</h3><label class="axis-picker">Axis <select id="chart-axis" aria-label="Velocity chart axis"><option value="x">X</option><option value="y">Y</option><option value="z" selected>Z</option></select></label></div><div class="chart-labels"><span><i class="line-key"></i>Observed velocity</span><span><i class="line-key prediction"></i>Policy prediction</span><span>m/s</span></div><div class="velocity-chart"><svg viewBox="0 0 320 94" preserveAspectRatio="none" role="img" aria-label="Observed velocity and policy prediction over simulation time"><path class="chart-rule" d="M0,47H320"></path><path id="velocity-path" d=""></path><path id="prediction-path" d=""></path></svg><span id="chart-max">—</span><span id="chart-min">—</span></div><p class="chart-note" id="chart-note">Waiting for actual source samples.</p>
+            <table class="vector-table policy-table"><thead><tr><th>Prediction</th><th>X</th><th>Y</th><th>Z</th></tr></thead><tbody><tr><th>Velocity <small>m/s</small></th><td id="policy-x">—</td><td id="policy-y">—</td><td id="policy-z">—</td></tr></tbody></table>
+            <p class="policy-evidence" id="inference-badge">Policy evidence unavailable</p><dl class="compact-data"><div><dt>Policy publication</dt><dd id="policy-seq">—</dd></div><div id="inference-count-row" hidden><dt>Reported inference count</dt><dd id="inference-count">—</dd></div></dl><p class="fine-print">Prediction is the reported policy vector, not a future trajectory. Coordinate conventions are retained as reported; no tracking error is inferred.</p>
+          </section>
+          <section class="data-section depth-section" id="depth-section" data-state="absent"><div class="section-heading"><h3>Simulated sensor depth</h3><span id="depth-status">Not reported</span></div><p class="fine-print" id="depth-absence">No completed source depth observation reported.</p><div id="depth-content" hidden><canvas id="depth-canvas" width="32" height="24" role="img" aria-label="Simulated ZED depth, nearest-cell-center source samples, blue near, paper far, ink invalid"></canvas><div class="depth-legend"><span>0.001 m · near</span><span>20 m · far</span></div><dl class="compact-data"><div><dt>Depth source sequence</dt><dd id="depth-seq">—</dd></div><div><dt>CPU sampling age</dt><dd id="depth-age">—</dd></div><div><dt>CPU sample / sim time</dt><dd id="depth-sim-time">—</dd></div><div><dt>Source → preview</dt><dd>320×240 → 32×24</dd></div></dl><p class="fine-print">Source millimetres · nearest-cell-center · u8-hex. Ink / q=0 invalid: source_mm == 0 or source_mm &gt; 20000. Valid range 0.001–20 m; quantized, not an RGB camera feed.</p><p class="fine-print" id="depth-source-note">Actual source pixels, never interpolated. CPU sampling time is not acquisition time; acquisition timestamp unavailable.</p></div></section>
+          <section class="data-section" id="native-measurements" hidden><div class="section-heading"><h3>Native measurements</h3><span>Reported only</span></div><dl class="compact-data" id="copper-measurements"></dl><p class="fine-print">Whole-iteration wall durations are not individual task, GPU kernel, or model inference timings.</p></section>
+          <section class="data-section source-evidence"><div class="section-heading"><h3>Source evidence</h3><button id="toggle-source" type="button" aria-expanded="false" aria-controls="source-detail">Inspect ↗</button></div><dl class="compact-data"><div><dt id="cadence-label">Received source cadence</dt><dd id="source-cadence">Measuring</dd></div><div><dt id="sim-rate-label">Sim time / wall time</dt><dd id="sim-rate">Measuring</dd></div></dl><p class="fine-print" id="evidence-note">Cadence is measured from distinct received native frames, not browser rendering or control-loop execution.</p><p class="unavailable-note" id="unsupported-note">Sensor/depth and task timing are not reported by this source.</p>
+            <div id="source-detail" hidden><dl class="compact-data"><div><dt>Source</dt><dd id="runtime-source">/api/state</dd></div><div><dt>Mission</dt><dd id="mission-id">Unavailable</dd></div><div><dt>Copper</dt><dd id="copper-version">Unavailable</dd></div><div><dt>Graphics</dt><dd id="graphics-adapter">Unavailable</dd></div><div><dt>Runtime revision</dt><dd id="runtime-revision">Unavailable</dd></div><div><dt>Source frame age</dt><dd id="frame-age">Unavailable</dd></div></dl><p class="fine-print">Reported provenance, not independently verified execution:</p><pre id="provenance">Unavailable</pre><a id="download-recording" hidden>Download available artifacts ↓</a></div>
+          </section>
+        </div>
+        <div class="inspector-foot"><span class="eyebrow">Native source / browser presentation</span><p id="presentation-note">Buffered observed poses. No extrapolation. Scene motion is not proof of realtime native computation.</p></div>
+      </aside>
     </div>
-
-    <div class="configuration-grid" id="inference">
-      <section class="panel" aria-labelledby="configuration-title">
-        <div class="panel-heading"><h2 id="configuration-title"><span class="section-number">03 /</span> Requested configuration</h2></div>
-        <dl class="definition-list config-data">
-          <div><dt>World</dt><dd id="requested-world">Unknown</dd></div>
-          <div><dt>Inference</dt><dd id="requested-inference">Unknown</dd></div>
-          <div><dt>Autonomy</dt><dd id="requested-autonomy">Unknown</dd></div>
-          <div><dt>Episode duration</dt><dd><span id="episode-duration">—</span> <span class="unit">s</span></dd></div>
-        </dl>
-        <p class="panel-note">Configuration is intent, not evidence that a backend ran.</p>
-      </section>
-      <section class="panel inference-panel" aria-labelledby="inference-title">
-        <div class="panel-heading"><h2 id="inference-title"><span class="section-number">04 /</span> Observed inference</h2><span id="inference-badge" class="square-label">Unconfirmed</span></div>
-        <dl class="inference-stats"><div><dt>Reported backend</dt><dd id="observed-inference">Unknown</dd></div><div><dt>Exact inference count</dt><dd id="inference-count">—</dd></div></dl>
-        <div class="policy-row"><p>Policy velocity <span class="unit">m/s</span><span class="policy-publication">Observation seq <span id="policy-seq">—</span></span></p><dl><div><dt>X</dt><dd id="policy-x">—</dd></div><div><dt>Y</dt><dd id="policy-y">—</dd></div><div><dt>Z</dt><dd id="policy-z">—</dd></div></dl></div>
-        <p class="panel-note" id="inference-note">No policy evidence yet. Requested configuration is not proof of execution.</p>
-      </section>
-    </div>
-
-    <section class="panel episode-panel" aria-labelledby="episode-title">
-      <div class="episode-title"><p class="eyebrow">Current episode</p><h2 id="episode-title">Awaiting episode</h2></div>
-      <dl><div><dt>Started at · runtime clock</dt><dd id="episode-start">Unknown</dd></div><div><dt>Last response · browser clock</dt><dd id="last-response">Not received</dd></div></dl>
-    </section>
-
-    <section class="panel recordings-panel" id="recordings" aria-labelledby="recordings-title">
-      <div class="panel-heading"><h2 id="recordings-title"><span class="section-number">05 /</span> Native recordings</h2><span class="eyebrow" id="recording-count">Index unknown</span></div>
-      <div class="table-scroll" tabindex="0" aria-label="Scrollable native recording index">
-        <table class="recordings-table"><caption class="sr-only">Native recording files and completed-file downloads</caption><thead><tr><th scope="col">Recording ID</th><th scope="col">State</th><th scope="col">Started · runtime clock</th><th scope="col">Size</th><th scope="col"><span class="sr-only">Download</span></th></tr></thead><tbody id="recording-rows"><tr><td colspan="5" class="empty-state">The recording index has not been received.</td></tr></tbody></table>
-      </div>
-      <p class="panel-note">Downloads are available only for completed native files with a valid local path. A recording is not proof of verified replay.</p>
-    </section>
-
-    <section class="panel runtime-panel" id="runtime" aria-labelledby="runtime-title">
-      <div class="panel-heading"><h2 id="runtime-title"><span class="section-number">06 /</span> Runtime provenance</h2><span class="eyebrow">Reported by /api/state</span></div>
-      <dl class="provenance-list"><div><dt>Copper version</dt><dd id="copper-version">Unknown</dd></div><div><dt>Source revision</dt><dd id="source-revision">Unknown</dd></div><div><dt>Runtime revision</dt><dd id="runtime-revision">Unknown</dd></div></dl>
-    </section>
-
-    <footer class="footer"><div><strong>Admiral</strong> <span class="footer-divider">/</span> Native flight demo <span class="footer-divider">/</span> Powered by Copper</div><p>Simulation only. No physical actuation.</p></footer>
+    <footer class="footer"><span>Admiral × Copper <span class="footer-divider">/</span> Partner flight demonstration</span><span id="recorded-disclaimer" hidden>Recorded native mission visualization · not verified Copper native replay or live computation.</span><span id="live-disclaimer">Physics &amp; policy stay native. The browser only visualizes received data.</span></footer>
+    <p id="error-detail" class="error-notice" role="alert" hidden></p>
+    <noscript>JavaScript is required. No live or recorded telemetry is displayed.</noscript>
   </main>
 </body>
 </html>

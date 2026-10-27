@@ -1,82 +1,60 @@
-# Admiral / Copper flight monitor — UI integration
+# Admiral × Copper flight lab — UI integration
 
-## Scope and runtime boundary
+## Surface and ownership
 
-All deliverable changes are under `www/`. The UI is dependency-free HTML/CSS/ES modules apart from locally vendored Three.js. It renders received native poses; it contains no physics, policy implementation, native/WASM substitute, remote video feed, or simulation controls. The three buttons affect the observation camera only.
+Full-height flight/data demonstration: dominant forest scene, narrow Copper inspector, explicit Live / Recorded source switch, and a simulation-time timeline. Desktop stays within the viewport; only the inspector scrolls. Small screens stack flight first, then inspector. Supplied Admiral Archivo / IBM Plex Mono, actual marks, paper/ink/blue square ruled components remain offline. Copper attribution is retained.
 
-Hardware is not inferred from deployment intent. Copy says **native compute**, not Jetson, unless an actual identity is available. Native graphics backend/adapter and requested vs reported inference are separate observations. The inspected integration was **local CPU CuVitFly with software Vulkan / llvmpipe**, not Jetson/CUDA.
+Changes are scoped to `www/` and the requested coordination note `artifacts/partner-ui-plan.md`. Backend, native patches, builds and deployment are owned elsewhere. This UI has not been deployed by its author.
 
-## Production files and static routes
+## Browser dependencies and API paths
 
-`static-routes.json` is the exact dependency inventory: **21 static paths**, plus two scene endpoints. Map `/` to `/index.html`. Serve only the packaged paths, using the backend's descriptor/no-follow safety. Tests, documentation, verification evidence, the manifest itself, and vendor provenance are not browser dependencies.
+`static-routes.json` is the strict backend dependency inventory. It includes the new `mission.js`, `live.js`, and `presentation.js`. Test files, documentation and verification evidence are not browser dependencies. No CDN, inline script, import map, dynamic package resolution or unsafe-inline CSP exception.
 
-- Surface: `index.html`, `styles.css`, `app.js`.
-- Data/runtime: `state.js`, `transport.js`, `monitor.js`, `format.js`.
-- Scene: `pose.js`, `viewer.js`.
-- Brand: `assets/Archivo.woff2`, `assets/IBMPlexMono-Regular.woff2`, `assets/IBMPlexMono-Medium.woff2`, `assets/admiral-logo-light.svg`, `assets/admiral-icon.svg`, `assets/paper-tile.png`, `assets/dark-texture-tile.png`.
-- Three.js: `vendor/three-r182/build/three.module.js`, `vendor/three-r182/build/three.core.js`, `vendor/three-r182/examples/jsm/loaders/GLTFLoader.js`, `vendor/three-r182/examples/jsm/controls/OrbitControls.js`, `vendor/three-r182/examples/jsm/utils/BufferGeometryUtils.js`.
+- `GET /api/state`: unchanged conservative parser, recording/configuration index and backward-compatible live fallback. Polls do not overlap; 3.5 s timeout.
+- `GET /api/telemetry`: batched genuine native frames. Initial request omits cursor; subsequent requests use `after_seq` and `episode_id` together. Expected envelope: `{schema_version:1,status,engine,episode,frames,oldest_seq,latest_seq,reset,server_uptime_s,frame_age_s}`. Unknown/malformed JSON does not become live evidence. HTTP 404/405/501 enables `/api/state` fallback for 15 s before retrying batched transport.
+- `GET /api/recordings/{id}/telemetry`: `{schema_version:1,recording:{id,completed,started_at,ended_at},provenance:null|object,frames:[native schema_version:1 frames],native_replay_verified:false}`. Same-origin GET, uncached JSON, strict existing recording ID syntax and exact requested ID match. Completed records only. Recording load timeout 30 s; superseded requests abort.
+- `GET /api/scene/forest.glb` and `/api/scene/quadcopter.glb`: actual pinned source geometry, no transform repair or remote dependencies.
+- Downloads retain exact validated `/api/recordings/{id}/download` paths, completed metadata required.
 
-Three.js is pinned to **r182 / 0.182.0**. MIT `LICENSE`, `PROVENANCE.md`, and `SHA256SUMS` are preserved under `vendor/three-r182/`. Only the three add-ons' bare `three` imports were rewritten to local relative paths. No inline import map or CSP relaxation is needed. The supplied brand bundle's WebP textures were losslessly represented as local PNGs to work with the backend's allowed image suffixes; paper grain is restrained with CSS opacity.
+`provenance.engine` describes the recording's original engine. A legacy `null` provenance remains unavailable; it never falls back to the currently live runtime's revision, Copper version or configuration.
 
-Required APIs:
+## Timing and interpretation
 
-- `GET /api/state` — poll every 200 ms, never overlap requests, 3.5 s request timeout.
-- `GET /api/scene/forest.glb`.
-- `GET /api/scene/quadcopter.glb`.
-- Completed recording URLs exactly as supplied, with IDs matching `[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}` and the exact local `/api/recordings/ID/download` path.
+### Live
 
-The tested GLBs contain no external images or decoder dependencies. Both loaded under the actual service's `default-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'` CSP. No `unsafe-inline`, blob-image allowance, CDN, fonts API, or network package resolver was used.
+Live is always the default. A bounded buffer keeps at most 600 distinct received native frames. It uses simulation-time spacing plus observed arrival spacing; when `wall_time_s` is genuinely reported and monotonic, it instead measures native timestamp cadence. The inspector labels the timing basis explicitly. Receipt cadence is not claimed to be native source sampling frequency.
 
-## Evidence rules
+Presentation advances on requestAnimationFrame within already received endpoints. The source-rate estimate is actual simulation seconds per wall second, not assumed 1×. A delayed cursor and bounded rate correction absorb ordinary arrival jitter without extrapolation. Repeated sequences do not add samples or keep progress fresh. Missing age, nonnative engine, bad world/pose, runtime lifecycle changes, request failure or 2 s stale progress stop the live claim; the last displayed pose freezes.
 
-- Valid HTTP alone never makes telemetry live. A later native frame sequence must advance; runtime frame age must be known and below 2 s. Repeated successful frozen responses become stale after 2 s. Errors preserve last received values but mark them unavailable/currently unconfirmed.
-- Missing vectors, booleans, counters, graphics identity and quaternions stay unknown. A vehicle is hidden until a fresh native position **and actual quaternion** are available. No identity orientation is invented for missing rotation.
-- A `policy_observation_seq` is a publication sequence, **not an exact inference count**. Policy confirmation requires fresh advancing native frame sequence, recently advancing policy publication sequence, an actual reported CPU/CUDA backend, and a finite prediction. A null `inference_count` remains `—` even when policy evidence is confirmed.
-- Requested CUDA is never converted to observed CUDA. Requested vs observed mismatch is explicit. Native graphics and browser WebGL are not conflated.
-- Recording metadata has unknown, empty, incomplete, complete, invalid-path and partial-index states. Download links are only emitted for completed files and exact validated local paths. Recordings do not create a verified-replay claim.
+Batched transport cannot make a slow native runtime realtime. Browser smoothness and measured source throughput are separate facts.
 
-## Pinned world/pose alignment
+### Recorded
 
-Checked `upstream` at exact source revision `d46ef87a65c7ba93bcad3c236da99e52cd77f319`, file `examples/cu_flight_controller/src/sim.rs`, using `git show` rather than assuming a world transform:
+Recorded is an explicit user-selected mode. Opening a completed mission loads real telemetry, paused at its actual start. Play/Pause, restart, seek and 0.25× / 0.5× / 1× / 2× controls operate in simulation time. Switching away pauses the recorded clock; loading data never changes mode or creates a live claim.
 
-- Forest `SIM_WORLD.scale = 1.0`.
-- World root `world_translation = Vec3::ZERO`, `world_scale = Vec3::splat(SIM_WORLD.scale)`, default/identity rotation.
-- Native quad root receives its actual translation/quaternion; the GLB's internal node transforms remain intact.
+Native frame sequence must strictly increase; simulation timestamps may stay equal or increase, matching the real backend. Binary search chooses the latest actual frame at an equal timestamp. Genuine startup frames can lack pose/attitude and remain in the data, with no aircraft placement until usable source data exists. Pose interpolation uses actual positions and unit-quaternion slerp. Inspector numbers remain the actual preceding observed source frame, not invented intermediate telemetry. Rendering can produce one distinct interpolated pose per display frame without claiming new native computation.
 
-The browser therefore applies **no extra forest translation, scaling, rotation or axis conversion**. Both paths use Y-up. Urban frames explicitly refuse a forest pose visualization rather than placing them in the wrong scene.
+Every recorded surface is labelled **Recorded native mission visualization**, **not verified Copper native replay or live computation**. This implementation does not run a Copper binary replay engine.
 
-The default stabilized chase camera follows only the displayed observed/interpolated vehicle position. It uses a shallow viewing angle to retain nearby forest context. Dragging switches to orbit; reset and frame-vehicle are view-only. The vehicle transform is never changed by camera controls.
+## Copper inspector / truth boundary
 
-Pose history holds 24 samples and a maximum 256 actual trace points, resets across episodes/restarts/regression or long gaps, and interpolates only within observed endpoints with a 200 ms presentation delay. It never extrapolates. Stale/unreachable/between-episode states freeze the displayed pose and show an overlay. Restoring a disposed page from bfcache reloads fresh observations.
+- Observed simulated physics position, velocity, and quaternion are preserved in Bevy world axes, Y-up.
+- Existing arm/AUTO/mode flags are labelled input **requests**, not proof of selected controls or actuation, following the native source audit.
+- Observed velocity and reported policy vector charts contain only finite source values, preserve gaps, and do not infer tracking error or a predicted trajectory. Their coordinate conventions are not assumed equivalent.
+- Policy publication sequence remains a publication sequence, never an exact inference count. An absent exact count is hidden. Live policy-advancing copy requires actual latest source publication progress, reported backend, usable prediction, and live source evidence. Recorded policy observations never say live/confirmed execution.
+- Optional actual candidate `frame.copper` scalars are parsed: `recording_mode` (`full` / `telemetry-only`), `full_recording`, `mcu_iteration_wall_us`, `compute_iteration_wall_us`, `export_wall_s`. Whole-iteration durations render as reported wall milliseconds, explicitly not individual task/GPU/inference timings. Telemetry-only produces a prominent **FULL CAPTURE OFF · Telemetry only · no full native archive** banner over the flight canvas. `wall_time_s` is native-process elapsed time, re-anchored by episode buffer resets. These candidate fields have RED→GREEN coverage; the actual new native candidate still requires parent device/deployment verification. Additional reader capabilities are `control_loop_ms`, `tasks:[{name,duration_ms}]`, `depth:{min_m,max_m,valid_pixels,width,height}`, `sensor:{name,sequence,timestamp_s}`; none are manufactured when absent. Native measurement panes remain hidden when unsupported; an honest unavailable note remains. No task topology is presented as executing tasks; no synthetic sensor imagery, frame counts, timings, or GPU metrics.
 
-## Verification performed
+## Scene fidelity
 
-Command: `node --test www/*.test.js` — **25 tests passed**, zero failed/skipped. Pure parsing, transport, progress/freshness, policy evidence, literal recording IDs, unknown/partial metadata, quaternion interpolation, absence, source connection, trace bounds, no extrapolation and chase framing were exercised RED before GREEN. Test files:
+Forest root is identity: no added translation/scale/rotation. True source bounds are approximately `[-115,-2.5065,-545]` to `[115,28.9794,90]`. The quadcopter source model remains about 0.1185 m wide. It is never enlarged or repositioned relative to the observed pose. A clearly labelled screen-space **vehicle position** cue makes the small aircraft legible. Trace points are actual source positions. The observation camera clears the 29 m canopy (minimum 37 m) and follows only displayed pose; camera controls never affect native simulation.
 
-- `assets.test.js`
-- `format.test.js`
-- `monitor.test.js`
-- `pose.test.js`
-- `state.test.js`
-- `transport.test.js`
+## Verification for this revision
 
-All **18 JavaScript files**, including test files and vendored modules, passed `node --check`.
+- Historical UI verification run: `node --test www/*.test.js` passed 42 tests with zero failures/skips; this is not the current suite count. RED→GREEN tests cover recording transport/parsing, real startup absence, equal sim timestamps, playback clock/clamping/seeking, mode isolation, batched live buffering, native/receipt clock distinction, no extrapolation, truthful policy labels, missing-value chart gaps, and explicit offline import allowlist.
+- Browser tested at the parent's genuine-data development server `http://127.0.0.1:18082/`: current UI, actual pinned GLBs, read-only Jetson live proxy, and the actual completed mission `20261027T065422Z-0479a668`. This localhost server does not run local native Copper/CUDA.
+- Genuine completed mission: 183 native frames; null startup pose preserved; `provenance:null` remains unavailable. Sampling 18.5–19.5 sim seconds at 60 evenly spaced presentation timestamps yielded 60 distinct interpolated positions from those actual frames. This verifies interpolation, not achieved browser FPS or native realtime performance.
+- Browser controls exercised: Live default, Recorded auto-open, seek, Play/Pause, switching back to Live disables recorded controls and pauses recorded time, Overview / Follow camera controls. No observed JS errors during exercised controls; no failed resources at the tested mirror. The older deployed service's missing batched endpoint was separately observed to fall back to `/api/state` without fake data.
+- Desktop 1440×900 and mobile 390×844 had no horizontal overflow in browser measurements. Mobile permits vertical reading below the full flight composition.
+- `verification/partner-recorded.png` is a browser screenshot of the real recorded mission visualization, not live compute proof or native replay verification.
 
-Actual browser verification used the real `service.make_server` CSP/static path, then the newest local UI through a temporary same-origin inspection proxy to the parent's **real native CPU service at `http://127.0.0.1:18081`**. The proxy forwarded actual state and immutable GLBs, not fixtures. It was not a release/deployment.
-
-Observed in that real integration:
-
-- WebGL2 context, forest + native black quad, full native quaternion, advancing native sequence, and a bounded real sampled path.
-- `CPU policy observed` with advancing `policy_observation_seq`; exact inference count remained `—`.
-- Actual Vulkan adapter `llvmpipe (LLVM 21.1.8, 128 bits)`; no hardware/CUDA verification claim.
-- Genuine grounded AUTO-wait phase: `Disarmed`, AUTO `Disabled`, sim time `0.53`, frame `3`, position `[-10.00, 0.07, 20.00]`. The vehicle did not fly before native activation.
-- Real between-episode transition: source `paused`, `Last displayed pose · frozen`, policy badge `Unconfirmed`.
-- Camera reset/orbit and chase controls worked without changing native execution.
-- No JS/CSP errors in inspected live states; zero non-local browser resources and zero failed asset requests.
-- No horizontal page overflow at 320, 390, 768, 960 or 1440 pixel viewports; controls have 44 px minimum height.
-
-Earlier isolated browser fixtures (not shipped) verified successful-but-frozen responses, transport failure, absent orientation, unsafe recording URLs, and HTML-injection resistance. A mobile overflow caused by an absolutely positioned screen-reader label escaping its table scroller was reproduced and fixed. The bfcache lifecycle regression was reproduced and fixed. Hidden-tab rAF suspension was distinguished from a scene failure by a foreground recheck.
-
-`verification/native-cpu-chase.png` is a screenshot of the newest UI against the actual CPU integration, not generated telemetry or Jetson proof. The backend currently reports `engine.revision = "unknown"`; the UI preserves that honestly. Jetson/CUDA hardware execution and native replay verification remain outside this UI task.
-
-Design self-audit: **0/10 slop tells**. Monitor composition, supplied Admiral typography/marks, one brand blue, square ruled surfaces, and a real scene observation rather than a marketing hero.
+Design self-audit: no gradient/glass/feature-card grid/monument counters/default Inter. Command / Inspect composition, supplied typography, flat square rules, real source geometry, and no filler metrics.

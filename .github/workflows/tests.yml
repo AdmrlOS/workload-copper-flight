@@ -1,0 +1,56 @@
+name: Source tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: source-tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      # Official release tags resolved through gh api on 2026-10-27.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - name: Prepare exact upstream source for reconstruction tests
+        run: python3 scripts/native_sources.py prepare --source upstream
+      - name: Run existing portable Python suites
+        run: |
+          python3 - <<'PY'
+          import pathlib
+          import unittest
+          suite = unittest.TestSuite()
+          loader = unittest.TestLoader()
+          # Even their helper tests need local-only Docker images/binaries.
+          excluded = {'test_native_performance.py', 'test_native_observability.py'}
+          for path in sorted(pathlib.Path('tests').glob('test_*.py')):
+              if path.name not in excluded:
+                  suite.addTests(loader.discover('tests', pattern=path.name))
+          result = unittest.TextTestRunner(verbosity=2).run(suite)
+          raise SystemExit(not result.wasSuccessful())
+          PY
+
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - name: Run actual browser module and asset tests
+        run: npm test --prefix www

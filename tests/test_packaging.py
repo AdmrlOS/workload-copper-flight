@@ -44,7 +44,8 @@ assert json.loads(pathlib.Path('/usr/lib/aarch64-linux-gnu/tegra-egl/nvidia.json
     def test_final_contains_locked_graphics_probe_and_observed_adapter_binary(self):
         from pathlib import Path
         root = Path(__file__).resolve().parents[1]
-        evidence = json.loads((root / 'vendor-assets/adapter-proof/evidence.json').read_text())
+        evidence_path = Path(os.environ.get('FLIGHT_NATIVE_EVIDENCE', root / 'vendor-assets/adapter-proof/evidence.json'))
+        evidence = json.loads(evidence_path.read_text())
         script = '''import hashlib,json,pathlib
 root=pathlib.Path('/')
 lock=json.loads(pathlib.Path('/opt/copper-flight/provenance/payload.lock.json').read_text())

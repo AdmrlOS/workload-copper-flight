@@ -34,6 +34,35 @@ const nativeFrame = (overrides = {}) => ({
   graphics: { backend: 'Vulkan', adapter_name: 'Observed adapter' }, ...overrides,
 });
 
+test('preserves a reported native wall timestamp without assigning receipt times to source frames', () => {
+  assert.equal(model.parseFrame(nativeFrame({ wall_time_s: 5.25 })).wall_time_s, 5.25);
+  assert.equal(Object.hasOwn(model.parseFrame(nativeFrame()), 'wall_time_s'), false);
+  assert.equal(model.parseFrame(nativeFrame({ wall_time_s: -1 })).wall_time_s, null);
+});
+
+test('reads actual Copper whole-iteration timing and distinguishes telemetry-only from full capture', () => {
+  const copper = { recording_mode: 'telemetry-only', full_recording: false, mcu_iteration_wall_us: 1634, compute_iteration_wall_us: 4200, export_wall_s: 8.4 };
+  const parsed = model.parseFrame(nativeFrame({ copper })).copper;
+  for (const key of Object.keys(copper)) assert.equal(parsed[key], copper[key]);
+  const invalid = model.parseFrame(nativeFrame({ copper: { recording_mode: 'replay', full_recording: 'true', mcu_iteration_wall_us: -1, compute_iteration_wall_us: 1.5, export_wall_s: -1 } })).copper;
+  assert.equal(invalid.recording_mode, null); assert.equal(invalid.full_recording, null);
+  assert.equal(invalid.mcu_iteration_wall_us, null); assert.equal(invalid.compute_iteration_wall_us, null); assert.equal(invalid.export_wall_s, null);
+});
+
+test('optional Copper measurements preserve only genuine finite fields; absence adds no fake task metrics', () => {
+  const copper = { control_loop_ms: .54, tasks: [{ name: 'policy', duration_ms: .23 }, { name: 'invalid', duration_ms: -3 }], depth: { min_m: .3, max_m: 14, valid_pixels: 300, width: 32, height: 24 }, sensor: { name: 'depth', sequence: 17, timestamp_s: 4.2 } };
+  const parsed = model.parseFrame(nativeFrame({ copper })).copper;
+  assert.equal(parsed?.control_loop_ms, .54);
+  assert.deepEqual(parsed.tasks, [{ name: 'policy', duration_ms: .23 }]);
+  assert.deepEqual(parsed.depth, copper.depth);
+  assert.deepEqual(parsed.sensor, copper.sensor);
+  assert.equal(Object.hasOwn(model.parseFrame(nativeFrame()), 'copper'), false);
+  const invalid = model.parseFrame(nativeFrame({ copper: { control_loop_ms: NaN, tasks: [{ name: 'policy', duration_ms: '12' }], depth: { min_m: -1 } } })).copper;
+  assert.equal(invalid.control_loop_ms, null);
+  assert.deepEqual(invalid.tasks, []);
+  assert.equal(invalid.depth, null);
+});
+
 test('normalizes versioned native frames without coercing or fabricating values', () => {
   const read = (frame) => model.parseState(envelope({ frame })).frame;
   assert.deepEqual(read(nativeFrame()), nativeFrame());

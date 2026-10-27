@@ -1,0 +1,17 @@
+# syntax=docker/dockerfile:1
+# Fast packaging path. For a clean source build use the main Dockerfile.
+# Runtime dependency closure already validated on the development Jetson.
+ARG RUNTIME_BASE=ghcr.io/admrlos/workload-copper-flight@sha256:a3ea626795c6f297faaef5b6e07771ba8904ca6c6f2b96f0091655ea7c608fdf
+FROM ${RUNTIME_BASE}
+ARG IMAGE_REVISION
+LABEL org.opencontainers.image.revision=${IMAGE_REVISION} \
+      org.opencontainers.image.source="https://github.com/AdmrlOS/workload-copper-flight" \
+      org.admrl.copper.demo.profile="telemetry-only"
+ENV IMAGE_REVISION=${IMAGE_REVISION} FLIGHT_NATIVE_LOG_MODE=telemetry-only
+COPY --from=native-binary --chmod=0755 /quad-sim-cuda /opt/copper-flight/bin/quad-sim
+COPY service.py boot.py /opt/copper-flight/
+COPY runtime/ /opt/copper-flight/runtime/
+COPY --chmod=0555 scripts/start-flight scripts/run-native-flight /opt/copper-flight/scripts/
+COPY www/ /opt/copper-flight/www/
+COPY Cargo.lock native-source.lock.json native-assets.lock.json native-contract.md /opt/copper-flight/provenance/
+COPY patches/ /opt/copper-flight/provenance/patches/

@@ -1,0 +1,18 @@
+diff --git a/examples/cu_flight_controller/src/sim_zed.rs b/examples/cu_flight_controller/src/sim_zed.rs
+index 95f088d5d..a67bdc292 100644
+--- a/examples/cu_flight_controller/src/sim_zed.rs
++++ b/examples/cu_flight_controller/src/sim_zed.rs
+@@ -79,6 +79,13 @@ impl SimZedFrameStore {
+         frame.confidence = Some(CuHandle::new_detached(confidence));
+     }
+ 
++    /// The exact completed CPU readback shared with the Copper ZED source.
++    /// Default/reset state has no observation. Cloning a handle does not copy pixels.
++    pub(crate) fn observed_depth(&self) -> Option<(u64, CuHandle<Vec<u16>>)> {
++        let frame = self.lock();
++        frame.depth.clone().map(|depth| (frame.seq, depth))
++    }
++
+     pub(crate) fn set_sensors(&self, sensors: SimZedSensors) {
+         self.lock().sensors = Some(sensors);
+     }

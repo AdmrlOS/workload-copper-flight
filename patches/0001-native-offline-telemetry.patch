@@ -43,7 +43,7 @@ index efc9fa887..d303939da 100644
          let model = VitFly::load(&device)
              .map_err(|err| CuError::new_with_cause("failed to load ViTFly model", err))?;
 diff --git a/examples/cu_flight_controller/src/sim.rs b/examples/cu_flight_controller/src/sim.rs
-index bea474cc8..d85172817 100644
+index bea474cc8..64aee2318 100644
 --- a/examples/cu_flight_controller/src/sim.rs
 +++ b/examples/cu_flight_controller/src/sim.rs
 @@ -16,6 +16,10 @@ mod compute_tasks;
@@ -57,7 +57,57 @@ index bea474cc8..d85172817 100644
  #[path = "sim/rc_joystick.rs"]
  mod rc_joystick;
  #[cfg(feature = "sim")]
-@@ -461,6 +465,13 @@ mod compute_copper {
+@@ -156,7 +160,7 @@ mod mcu_copper {
+             Self { app }
+         }
+ 
+-        #[cfg(test)]
++        #[cfg(any(test, feature = "sim"))]
+         pub(super) fn without_logger(clock: &RobotClock) -> Self {
+             let app = default::FlightControllerSim::builder()
+                 .with_clock(clock.clone())
+@@ -182,6 +186,15 @@ mod mcu_copper {
+             Self { app }
+         }
+ 
++        #[cfg(feature = "sim")]
++        pub(super) fn disable_recording(&mut self) {
++            let runtime = self.app.copper_runtime_mut();
++            runtime.copperlists_manager = cu29::curuntime::CopperListsManager::new(None)
++                .expect("disable CopperList output");
++            runtime.keyframes_manager = cu29::curuntime::KeyFramesManager::new(None, 1)
++                .expect("disable task-state capture");
++        }
++
+         pub(super) fn start(&mut self) -> CuResult<()> {
+             self.app.start_all_tasks(&mut default_callback)
+         }
+@@ -380,7 +393,7 @@ mod compute_copper {
+             }
+         }
+ 
+-        #[cfg(any(test, feature = "bevymon"))]
++        #[cfg(any(test, feature = "bevymon", feature = "sim"))]
+         pub(super) fn new(clock: &RobotClock, zed_store: sim_zed::SimZedFrameStore) -> Self {
+             let app = default::FlightComputeSim::builder()
+                 .with_clock(clock.clone())
+@@ -395,6 +408,15 @@ mod compute_copper {
+             }
+         }
+ 
++        #[cfg(feature = "sim")]
++        pub(super) fn disable_recording(&mut self) {
++            let runtime = self.app.copper_runtime_mut();
++            runtime.copperlists_manager = cu29::curuntime::CopperListsManager::new(None)
++                .expect("disable CopperList output");
++            runtime.keyframes_manager = cu29::curuntime::KeyFramesManager::new(None, 1)
++                .expect("disable task-state capture");
++        }
++
+         pub(super) fn start(&mut self) -> CuResult<()> {
+             self.app.start_all_tasks(&mut default_callback)
+         }
+@@ -461,6 +483,13 @@ mod compute_copper {
              self.app.run_one_iteration(&mut sim_callback)
          }
  
@@ -71,7 +121,16 @@ index bea474cc8..d85172817 100644
          pub(super) fn set_zed_sensors(&self, sensors: sim_zed::SimZedSensors) {
              self.zed_store.set_sensors(sensors);
          }
-@@ -591,7 +602,14 @@ struct SimRunOptions {
+@@ -544,6 +573,8 @@ struct CopperState {
+     mcu: mcu_copper::Runtime,
+     compute: compute_copper::Runtime,
+     autonomy_link: SimAutonomyLink,
++    mcu_iteration_wall_us: u64,
++    compute_iteration_wall_us: u64,
+ }
+ 
+ #[derive(Default)]
+@@ -591,7 +622,14 @@ struct SimRunOptions {
  impl Default for SimRunOptions {
      fn default() -> Self {
          const AUTOSTART_S: f32 = 4.0;
@@ -87,7 +146,7 @@ index bea474cc8..d85172817 100644
  
          Self {
              autostart_s: cfg!(feature = "autonomous-demo").then_some(AUTOSTART_S),
-@@ -599,7 +617,7 @@ impl Default for SimRunOptions {
+@@ -599,7 +637,7 @@ impl Default for SimRunOptions {
                  feature = "autonomous-demo",
                  not(target_arch = "wasm32")
              ))
@@ -96,7 +155,7 @@ index bea474cc8..d85172817 100644
          }
      }
  }
-@@ -1040,7 +1058,9 @@ fn spawn_pose_components() -> (
+@@ -1040,7 +1078,9 @@ fn spawn_pose_components() -> (
  
  #[cfg(not(target_arch = "wasm32"))]
  fn scene_asset_root() -> PathBuf {
@@ -107,7 +166,7 @@ index bea474cc8..d85172817 100644
  }
  
  #[cfg(not(target_arch = "wasm32"))]
-@@ -1157,6 +1177,23 @@ fn precached_asset_path(
+@@ -1157,6 +1197,23 @@ fn precached_asset_path(
  #[cfg(not(target_arch = "wasm32"))]
  fn prepare_scene_assets() -> SceneAssetPaths {
      let asset_root = scene_asset_root();
@@ -131,7 +190,7 @@ index bea474cc8..d85172817 100644
      let cache_root = scene_asset_cache_root();
      fs::create_dir_all(&asset_root).expect("failed to create scene asset directory");
  
-@@ -1329,7 +1366,9 @@ fn setup_copper(mut commands: Commands, zed_store: Res<sim_zed::SimZedFrameStore
+@@ -1329,7 +1386,9 @@ fn setup_copper(mut commands: Commands, zed_store: Res<sim_zed::SimZedFrameStore
  
  #[cfg(all(not(target_arch = "wasm32"), feature = "sim"))]
  fn sim_log_paths() -> (PathBuf, PathBuf) {
@@ -142,7 +201,58 @@ index bea474cc8..d85172817 100644
      (
          log_dir.join("flight_controller_sim.copper"),
          log_dir.join("flight_compute_sim.copper"),
-@@ -1748,9 +1787,17 @@ fn setup_world(
+@@ -1352,13 +1411,25 @@ fn build_sim_copper_state(
+     }
+ 
+     let (clock, clock_mock) = RobotClock::mock();
+-    let mut mcu = mcu_copper::Runtime::with_log_path(&clock, mcu_logger_path, log_slab_size);
+-    let mut compute = compute_copper::Runtime::with_log_path(
+-        &clock,
+-        zed_store,
+-        compute_logger_path,
+-        log_slab_size,
+-    );
++    let mode = native_contract::native_log_mode(std::env::var("FLIGHT_NATIVE_LOG_MODE").ok().as_deref())
++        .expect("invalid native recording mode");
++    eprintln!("native recording profile: {} (full binary replay inputs: {})", mode.as_str(), mode == native_contract::NativeLogMode::Full);
++    let (mut mcu, mut compute) = match mode {
++        native_contract::NativeLogMode::Full => (
++            mcu_copper::Runtime::with_log_path(&clock, mcu_logger_path, log_slab_size),
++            compute_copper::Runtime::with_log_path(&clock, zed_store, compute_logger_path, log_slab_size),
++        ),
++        native_contract::NativeLogMode::TelemetryOnly => {
++            let mut mcu = mcu_copper::Runtime::without_logger(&clock);
++            let mut compute = compute_copper::Runtime::new(&clock, zed_store);
++            // A NoopLogger alone still serializes CopperLists and freezes CUDA
++            // recurrent state. Remove downstream demand BEFORE starting tasks.
++            // All source/control/policy tasks remain the identical generated graph.
++            mcu.disable_recording();
++            compute.disable_recording();
++            (mcu, compute)
++        }
++    };
+ 
+     mcu.start().expect("failed to start tasks");
+     compute.start().expect("failed to start compute tasks");
+@@ -1369,6 +1440,8 @@ fn build_sim_copper_state(
+         mcu,
+         compute,
+         autonomy_link: SimAutonomyLink::default(),
++        mcu_iteration_wall_us: 0,
++        compute_iteration_wall_us: 0,
+     }
+ }
+ 
+@@ -1395,6 +1468,8 @@ fn build_bevymon_copper(zed_store: sim_zed::SimZedFrameStore) -> (MonitorModel,
+             mcu,
+             compute,
+             autonomy_link: SimAutonomyLink::default(),
++            mcu_iteration_wall_us: 0,
++            compute_iteration_wall_us: 0,
+         },
+     )
+ }
+@@ -1748,9 +1823,17 @@ fn setup_world(
          affects_lightmapped_meshes: true,
      });
  
@@ -162,7 +272,7 @@ index bea474cc8..d85172817 100644
              TextureDimension::D2,
              TextureFormat::Bgra8UnormSrgb,
              RenderAssetUsages::all(),
-@@ -1790,15 +1837,21 @@ fn setup_world(
+@@ -1790,15 +1873,21 @@ fn setup_world(
          },
          SimSceneCamera,
      ));
@@ -187,7 +297,31 @@ index bea474cc8..d85172817 100644
      } else {
          camera.insert(IsDefaultUiCamera);
      }
-@@ -3128,6 +3181,7 @@ fn asset_plugin() -> AssetPlugin {
+@@ -2622,6 +2711,7 @@ fn run_copper_iteration(
+         magnetometer: MagnetometerPayload::from_raw(map_bevy_body_to_fc_magnetometer(body_mag)),
+         barometer: BarometerPayload::from_raw(pressure_pa, 25.0),
+     });
++    let started = std::time::Instant::now();
+     copper.mcu.run_iteration(
+         &copper.clock,
+         vehicle,
+@@ -2630,9 +2720,13 @@ fn run_copper_iteration(
+         osd_overlay,
+         &mut copper.autonomy_link,
+     )?;
+-    copper
++    copper.mcu_iteration_wall_us = started.elapsed().as_micros() as u64;
++    let started = std::time::Instant::now();
++    let result = copper
+         .compute
+-        .run_iteration(&copper.clock, &mut copper.autonomy_link)
++        .run_iteration(&copper.clock, &mut copper.autonomy_link);
++    copper.compute_iteration_wall_us = started.elapsed().as_micros() as u64;
++    result
+ }
+ 
+ fn apply_multicopter_dynamics(
+@@ -3128,6 +3222,7 @@ fn asset_plugin() -> AssetPlugin {
      #[cfg(not(all(feature = "bevymon", target_arch = "wasm32")))]
      {
          AssetPlugin {
@@ -195,7 +329,7 @@ index bea474cc8..d85172817 100644
              unapproved_path_mode: UnapprovedPathMode::Allow,
              ..default()
          }
-@@ -3250,6 +3304,17 @@ fn sync_loading_overlay(
+@@ -3250,6 +3345,17 @@ fn sync_loading_overlay(
      }
  }
  
@@ -213,7 +347,7 @@ index bea474cc8..d85172817 100644
  pub fn build_world(headless: bool, split_monitor: bool) -> App {
      build_world_with_assets(
          headless,
-@@ -3291,14 +3356,22 @@ fn build_world_with_assets(
+@@ -3291,14 +3397,22 @@ fn build_world_with_assets(
          return app;
      }
  
@@ -244,12 +378,21 @@ index bea474cc8..d85172817 100644
      app.add_plugins(ExtractResourcePlugin::<ZedDepthTexture>::default());
      app.get_sub_app_mut(RenderApp)
          .expect("render app should be present")
-@@ -3366,6 +3439,8 @@ pub fn run_sim() {
+@@ -3366,6 +3480,8 @@ pub fn run_sim() {
      let mut app = build_world_with_assets(false, false, Some(scene_assets), zed_store);
      #[cfg(not(target_arch = "wasm32"))]
      {
 +        app.insert_resource(native_status::NativeStatus::from_env());
-+        app.add_systems(Update, native_status::export_status);
++        app.add_systems(bevy::prelude::FixedPostUpdate, native_status::export_status.after(PhysicsSystems::Last));
          app.add_systems(Startup, setup_copper);
          app.add_systems(
              FixedUpdate,
+@@ -3595,6 +3711,8 @@ mod tests {
+             mcu,
+             compute,
+             autonomy_link: SimAutonomyLink::default(),
++            mcu_iteration_wall_us: 0,
++            compute_iteration_wall_us: 0,
+         }
+     }
+ 

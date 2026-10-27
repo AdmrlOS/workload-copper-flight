@@ -171,6 +171,9 @@ fn main() {
             self.assertIn("mod native_status;", (target / "examples/cu_flight_controller/src/sim.rs").read_text())
             self.assertEqual((target / "examples/cu_flight_controller/src/native_contract.rs").read_bytes(), (ROOT / "patches/native_contract.rs").read_bytes())
             self.assertEqual((target / "Cargo.lock").read_bytes(), (ROOT / "Cargo.lock").read_bytes())
+            # Later patches overlap earlier hunks; reconstruction must still be idempotent.
+            again = subprocess.run(["python3", str(ROOT / "scripts/native_sources.py"), "prepare", "--source", str(target)], capture_output=True, text=True)
+            self.assertEqual(again.returncode, 0, again.stdout + again.stderr)
 
 
 if __name__ == "__main__":

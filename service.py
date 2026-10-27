@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Read-only native flight telemetry, persistence and episode supervision."""
 import copy
+import io
 import json
 import math
 
@@ -43,6 +44,39 @@ def number(value):
         return type(value) in {int, float} and math.isfinite(value)
     except OverflowError:
         return False
+
+
+DEPTH_CONSTANTS = dict(
+    source="SimZedFrameStore.depth/Copper.ZedSource", source_width=320, source_height=240,
+    width=32, height=24, encoding="u8-hex", sampling="nearest-cell-center",
+    source_units="millimetres", invalid_u8=0,
+    invalid_rule="source_mm == 0 or source_mm > 20000",
+    decode_m="(1 + (q - 1) * 19999 / 254) / 1000; q=0 invalid")
+
+
+def normalize_depth_preview(value, frame):
+    """Allowlist the bounded CPU observation; never imply camera acquisition time."""
+    if not isinstance(value, dict):
+        return None
+    if any(type(value.get(key)) is not type(expected) or value[key] != expected
+           for key, expected in DEPTH_CONSTANTS.items()):
+        return None
+    seq = value.get("source_seq")
+    if type(seq) is not int or not 0 <= seq <= 2**53 - 1:
+        return None
+    for sample, row in (("sample_wall_time_s", "wall_time_s"), ("sample_sim_time_s", "sim_time_s")):
+        if (not number(value.get(sample)) or value[sample] < 0 or
+                not number(frame.get(row)) or value[sample] > frame[row] + 1e-6):
+            return None
+    limits = value.get("range_m")
+    if not isinstance(limits, list) or len(limits) != 2 or not all(number(v) for v in limits) or limits != [0.001, 20.0]:
+        return None
+    data = value.get("data")
+    if (not isinstance(data, str) or len(data) != 1536 or
+            any(c not in "0123456789abcdef" for c in data) or not any(c != "0" for c in data)):
+        return None
+    return dict(DEPTH_CONSTANTS, source_seq=seq, sample_wall_time_s=value["sample_wall_time_s"],
+                sample_sim_time_s=value["sample_sim_time_s"], range_m=[0.001, 20.0], data=data)
 
 
 def validate_frame(payload):
@@ -102,7 +136,22 @@ def validate_frame(payload):
         device = metadata.get(device_key)
         if device not in (None, "IntegratedGpu", "DiscreteGpu", "Cpu", "VirtualGpu", "Other"):
             raise ValueError("invalid graphics device type")
+    if "depth_preview" in frame and normalize_depth_preview(frame["depth_preview"], frame) is None:
+        raise ValueError("invalid native depth preview")
     return frame
+
+
+def normalize_frame(frame):
+    native_frame = copy.deepcopy(frame)
+    if "depth_preview" in native_frame:
+        preview = normalize_depth_preview(native_frame.pop("depth_preview"), native_frame)
+        if preview is not None:
+            native_frame["depth_preview"] = preview
+    graphics = native_frame.setdefault("graphics", {})
+    for key, raw_key in (("backend", "graphics_backend"), ("adapter_name", "graphics_adapter"),
+                         ("vendor_id", "graphics_vendor_id"), ("device_type", "graphics_device_type")):
+        graphics.setdefault(key, native_frame.get(raw_key))
+    return native_frame
 
 
 class TelemetryReader:
@@ -136,6 +185,7 @@ class TelemetryReader:
 
 import threading
 import time
+from collections import deque
 from datetime import datetime, timezone
 
 
@@ -145,8 +195,11 @@ def utcnow():
 
 class StateStore:
     def __init__(self, revision="unknown", world="forest", inference="cpu", episode_seconds=45,
-                 inactivity_timeout=30):
+                 inactivity_timeout=30, history_limit=600):
+        if type(history_limit) is not int or not 1 <= history_limit <= 4096:
+            raise ValueError("invalid live telemetry history limit")
         self.lock = threading.RLock()
+        self.history = deque(maxlen=history_limit)
         self.started = time.monotonic()
         self.updated = self.progress_at = None
         self.inactivity_timeout = inactivity_timeout
@@ -161,6 +214,7 @@ class StateStore:
 
     def begin(self, run_id):
         with self.lock:
+            self.history.clear()
             self.data.update(status="starting", error=None, frame=None,
                              episode=dict(id=run_id, started_at=utcnow()))
             self.updated = self.progress_at = None
@@ -174,12 +228,29 @@ class StateStore:
                 self.progress_at = self.updated
                 self.advanced = True
                 self.data["status"] = "live"
-            native_frame = copy.deepcopy(frame)
-            graphics = native_frame.setdefault("graphics", {})
-            for key, raw_key in (("backend", "graphics_backend"), ("adapter_name", "graphics_adapter"),
-                                 ("vendor_id", "graphics_vendor_id"), ("device_type", "graphics_device_type")):
-                graphics.setdefault(key, native_frame.get(raw_key))
+            native_frame = normalize_frame(frame)
             self.data["frame"] = native_frame
+            self.history.append((self.updated - self.started, native_frame))
+
+    def telemetry_snapshot(self, after_seq=None, episode_id=None):
+        if after_seq is not None and (type(after_seq) is not int or not 0 <= after_seq <= 2**53 - 1):
+            raise ValueError("invalid telemetry cursor")
+        with self.lock:
+            now = time.monotonic()
+            oldest = self.history[0][1]["seq"] if self.history else None
+            latest = self.history[-1][1]["seq"] if self.history else None
+            episode = self.data["episode"]
+            current = episode.get("id") if isinstance(episode, dict) else None
+            reset = (after_seq is None or episode_id != current or
+                     (oldest is not None and after_seq < oldest - 1) or
+                     (latest is not None and after_seq > latest))
+            selected = [frame for _, frame in self.history if reset or frame["seq"] > after_seq]
+            return dict(schema_version=1, status=self.data["status"],
+                        engine=copy.deepcopy(self.data["engine"]),
+                        episode=copy.deepcopy(self.data["episode"]),
+                        frames=copy.deepcopy(selected), oldest_seq=oldest, latest_seq=latest,
+                        reset=reset, server_uptime_s=now - self.started,
+                        frame_age_s=None if self.updated is None else now - self.updated)
 
     def fail(self, error):
         with self.lock:
@@ -204,7 +275,7 @@ import shutil
 import stat
 import uuid
 from pathlib import Path
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 
 DIR_FLAGS = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC
 RUN_ID = re.compile(r"[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}")
@@ -255,6 +326,7 @@ class RecordingStore:
         self.max_runs, self.max_bytes = max_runs, max_bytes
         self.lock = threading.RLock()
         self.download_slot = threading.BoundedSemaphore(1)
+        self.playback_slot = threading.BoundedSemaphore(2)
 
     @contextmanager
     def open_root(self):
@@ -457,12 +529,22 @@ class FlightSupervisor:
         run = self.recordings.begin(run_id)
         self.state.begin(run_id)
         self.retain(run_id)
-        config = self.state.snapshot()["configuration"]
+        snapshot = self.state.snapshot()
+        config = snapshot["configuration"]
         environment = dict(os.environ, FLIGHT_WORLD=config["world"], FLIGHT_INFERENCE=config["inference"],
                            FLIGHT_EPISODE_SECONDS=str(config["episode_seconds"]),
                            COPPER_FLIGHT_TELEMETRY=str(run / "telemetry.jsonl"),
                            COPPER_FLIGHT_LOG_DIR=str(run / "logs"))
         with self.recordings.open_run(run_id) as fd:
+            provenance = dict(schema_version=1, recording_id=run_id,
+                              recorded_by="copper-flight-supervisor",
+                              engine=snapshot["engine"], configuration=config,
+                              native_replay_verified=False)
+            meta_fd = open_regular(fd, "provenance.json", os.O_WRONLY | os.O_CREAT | os.O_EXCL)
+            with os.fdopen(meta_fd, "wb") as metadata:
+                metadata.write(json.dumps(provenance, allow_nan=False).encode())
+                metadata.flush()
+                os.fsync(metadata.fileno())
             raw = open_regular(fd, "telemetry.jsonl", os.O_RDWR | os.O_CREAT | os.O_EXCL)
             log_fd = open_regular(fd, "native.log", os.O_WRONLY | os.O_CREAT | os.O_EXCL)
         with os.fdopen(raw, "rb", buffering=0) as stream, os.fdopen(log_fd, "wb") as log:
@@ -550,9 +632,60 @@ import mimetypes
 import tarfile
 import tempfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import unquote, urlsplit
+from urllib.parse import parse_qs, unquote, urlsplit
 
 ARTIFACT = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,240}\.copper(?:\.[0-9]+)?")
+MAX_PLAYBACK_BYTES = 32 * 1024**2
+MAX_PLAYBACK_FRAMES = 20000
+
+
+class PlaybackIncomplete(ValueError):
+    pass
+
+
+class PlaybackTooLarge(ValueError):
+    pass
+
+
+def completed_telemetry(recordings, run_id):
+    """Read genuine completed frames; visualization is not native replay verification."""
+    check_id(run_id)
+    with ExitStack() as stack:
+        with recordings.lock, recordings.open_run(run_id) as fd:
+            manifest = recordings.read_manifest(fd, run_id)
+            if not manifest["completed"]:
+                raise PlaybackIncomplete("recording is not completed")
+            stream = stack.enter_context(os.fdopen(open_regular(fd, "telemetry.jsonl"), "rb"))
+            size = os.fstat(stream.fileno()).st_size
+            if size > MAX_PLAYBACK_BYTES:
+                raise PlaybackTooLarge("telemetry playback byte limit exceeded")
+            try:
+                metadata = stack.enter_context(os.fdopen(open_regular(fd, "provenance.json"), "rb"))
+            except FileNotFoundError:
+                metadata = None
+        # Pinned descriptors survive retention; parsing/network never holds its lock.
+        payload = stream.read(MAX_PLAYBACK_BYTES + 1)
+        if len(payload) > MAX_PLAYBACK_BYTES:
+            raise PlaybackTooLarge("telemetry playback byte limit exceeded")
+        if len(payload) != size or not payload or not payload.endswith(b"\n"):
+            raise ValueError("incomplete or changed telemetry artifact")
+        provenance = None
+        if metadata is not None:
+            provenance = bounded_json(metadata.read(MAX_JSON + 1))
+            if (not isinstance(provenance, dict) or provenance.get("schema_version") != 1 or
+                    provenance.get("recording_id") != run_id or
+                    provenance.get("native_replay_verified") is not False):
+                raise ValueError("invalid recording provenance")
+    reader = TelemetryReader(io.BytesIO(payload))
+    frames = []
+    while reader.offset < len(payload):
+        frames.extend(normalize_frame(frame) for frame in reader.poll())
+        if len(frames) > MAX_PLAYBACK_FRAMES:
+            raise PlaybackTooLarge("telemetry playback frame limit exceeded")
+    if reader.buffer or not frames:
+        raise ValueError("incomplete telemetry artifact")
+    return dict(schema_version=1, recording=manifest, provenance=provenance,
+                frames=frames, native_replay_verified=False)
 
 
 @contextmanager
@@ -561,7 +694,7 @@ def snapshot_files(recordings, run_id):
     streams, aliases = {}, {}
     def collect(fd, prefix=""):
         for name in sorted(os.listdir(fd)):
-            if not (ARTIFACT.fullmatch(name) or (not prefix and name in {"telemetry.jsonl", "native.log", "manifest.json"})):
+            if not (ARTIFACT.fullmatch(name) or (not prefix and name in {"telemetry.jsonl", "native.log", "manifest.json", "provenance.json"})):
                 continue
             member = prefix + name
             try:
@@ -695,6 +828,18 @@ def make_server(state, recordings, web_root, host="0.0.0.0", port=8080, socket_t
                 path = unquote(urlsplit(self.path).path, errors="strict")
                 if path == "/api/state":
                     return self.json_response(200, state.snapshot())
+                if path == "/api/telemetry":
+                    query = parse_qs(urlsplit(self.path).query, keep_blank_values=True, strict_parsing=True)
+                    after_seq = episode_id = None
+                    if query:
+                        if set(query) != {"after_seq", "episode_id"} or any(len(v) != 1 for v in query.values()):
+                            raise ValueError("invalid telemetry cursor parameters")
+                        cursor = query["after_seq"][0]
+                        if not re.fullmatch(r"0|[1-9][0-9]{0,15}", cursor):
+                            raise ValueError("invalid telemetry cursor")
+                        after_seq, episode_id = int(cursor), query["episode_id"][0]
+                        check_id(episode_id)
+                    return self.json_response(200, state.telemetry_snapshot(after_seq, episode_id))
                 if path == "/healthz":
                     healthy = state.ready()
                     return self.json_response(200 if healthy else 503,
@@ -718,6 +863,25 @@ def make_server(state, recordings, web_root, host="0.0.0.0", port=8080, socket_t
                         except OSError:
                             self.close_connection = True
                     return
+                if path.startswith("/api/recordings/") and path.endswith("/telemetry"):
+                    run_id = path.removeprefix("/api/recordings/").removesuffix("/telemetry")
+                    check_id(run_id)
+                    if not recordings.playback_slot.acquire(blocking=False):
+                        return self.json_response(429, dict(error="telemetry readers busy"))
+                    try:
+                        try:
+                            bundle = completed_telemetry(recordings, run_id)
+                        except PlaybackIncomplete as error:
+                            return self.json_response(409, dict(error=str(error)))
+                        except PlaybackTooLarge as error:
+                            return self.json_response(413, dict(error=str(error)))
+                        except FileNotFoundError:
+                            raise
+                        except (ValueError, OSError):
+                            return self.json_response(400, dict(error="invalid telemetry artifact"))
+                        return self.json_response(200, bundle)
+                    finally:
+                        recordings.playback_slot.release()
                 if path.startswith("/api/recordings/") and path.endswith("/download"):
                     run_id = path.removeprefix("/api/recordings/").removesuffix("/download")
                     check_id(run_id)

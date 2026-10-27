@@ -1,3 +1,5 @@
+import { parseDepthPreview } from './depth.js';
+
 // All normalization is conservative: absent or invalid observations stay null.
 const object = (value) => value !== null && typeof value === 'object' && !Array.isArray(value) ? value : {};
 const text = (value) => typeof value === 'string' && value.trim() ? value : null;
@@ -19,12 +21,26 @@ const quaternion = (value) => {
   return { x: q.x, y: q.y, z: q.z, w: q.w };
 };
 
-function parseFrame(input) {
+function parseCopper(input) {
+  const c = object(input); const depth = object(c.depth); const sensor = object(c.sensor);
+  const validDepth = nonnegative(depth.min_m) !== null && nonnegative(depth.max_m) !== null && depth.max_m >= depth.min_m && integer(depth.valid_pixels) !== null && integer(depth.width) > 0 && integer(depth.height) > 0 && depth.valid_pixels <= depth.width * depth.height;
+  return {
+    recording_mode: choice(c.recording_mode, ['full', 'telemetry-only']), full_recording: boolean(c.full_recording),
+    mcu_iteration_wall_us: integer(c.mcu_iteration_wall_us), compute_iteration_wall_us: integer(c.compute_iteration_wall_us), export_wall_s: nonnegative(c.export_wall_s),
+    control_loop_ms: nonnegative(c.control_loop_ms),
+    tasks: Array.isArray(c.tasks) ? c.tasks.filter(task => text(task?.name) && nonnegative(task?.duration_ms) !== null).map(task => ({ name: task.name, duration_ms: task.duration_ms })) : [],
+    depth: validDepth ? { min_m: depth.min_m, max_m: depth.max_m, valid_pixels: depth.valid_pixels, width: depth.width, height: depth.height } : null,
+    sensor: text(sensor.name) && integer(sensor.sequence) !== null && nonnegative(sensor.timestamp_s) !== null ? { name: sensor.name, sequence: sensor.sequence, timestamp_s: sensor.timestamp_s } : null,
+  };
+}
+
+export function parseFrame(input) {
   const f = object(input);
   if (f.schema_version !== 1 || integer(f.seq) === null) return null;
   const graphics = object(f.graphics);
   return {
     schema_version: 1, seq: f.seq, sim_time_s: nonnegative(f.sim_time_s),
+    ...(Object.hasOwn(f, 'wall_time_s') ? { wall_time_s: nonnegative(f.wall_time_s) } : {}),
     position_m: vector(f.position_m), velocity_m_s: vector(f.velocity_m_s), rotation: quaternion(f.rotation),
     armed: boolean(f.armed), auto_enabled: boolean(f.auto_enabled),
     mode: text(f.mode), world: text(f.world),
@@ -33,6 +49,8 @@ function parseFrame(input) {
     inference_backend: choice(f.inference_backend, ['cpu', 'cuda']),
     inference_count: integer(f.inference_count),
     graphics: { backend: text(graphics.backend), adapter_name: text(graphics.adapter_name) },
+    ...(Object.hasOwn(f, 'depth_preview') ? { depth_preview: parseDepthPreview(f.depth_preview, f) } : {}),
+    ...(f.copper && typeof f.copper === 'object' && !Array.isArray(f.copper) ? { copper: parseCopper(f.copper) } : {}),
   };
 }
 

@@ -27,7 +27,16 @@ test('ships an explicit offline browser dependency inventory for the backend all
   }
   assert.ok(read('vendor/three-r182/build/three.core.js').includes("const REVISION = '182'"));
   assert.ok(read('vendor/three-r182/LICENSE').includes('MIT License'));
+  for (const file of ['app.js', 'transport.js', 'live.js', 'mission.js', 'presentation.js', 'viewer.js']) {
+    assert.ok(manifest.static_routes.includes(`/${file}`), `Missing entry module ${file}`);
+    for (const match of read(file).matchAll(/from ['"]\.\/([^'"]+)['"]/g)) assert.ok(manifest.static_routes.includes(`/${match[1]}`), `Allowlist missing imported ${match[1]}`);
+  }
   const html = read('index.html');
+  assert.ok(manifest.static_routes.includes('/depth.js'), 'Ship the bounded depth module');
+  assert.match(html, /id="depth-canvas"[^>]*width="32"[^>]*height="24"/, 'Depth canvas is fixed and bounded');
+  assert.match(read('app.js'), /renderDepth\(view,\s*latest\)/, 'Render depth on every inspector refresh');
+  assert.match(read('app.js'), /depthPresentation\(/, 'Wire source age and modes into inspector');
+  assert.match(html, /Simulated sensor depth/);
   assert.equal(/<script(?![^>]*\bsrc\s*=)/i.test(html), false, 'No inline scripts or import maps');
   assert.equal(/\son\w+\s*=/i.test(html), false, 'No inline handlers');
   assert.equal(/\sstyle\s*=/i.test(html), false, 'No inline CSS');

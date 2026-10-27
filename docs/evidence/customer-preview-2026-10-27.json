@@ -1,0 +1,79 @@
+{
+  "status": "development evaluation preview; strict realtime gate failed; not a final customer release",
+  "date": "2026-10-27",
+  "candidate_revision": "candidate-native-542d0b163e9f",
+  "image": "ghcr.io/admrlos/workload-copper-flight@sha256:ce5747f451f235583bb7edfbd0e65c52f49c03cd9e3d0fa4d2c55c79382a3684",
+  "native_cuda_sha256": "542d0b163e9fe127af26ce5ecdb89e91d3102db7c634fc1c12f21e543f9f4624",
+  "registry_visibility": "private",
+  "anonymous_manifest_http_status": 401,
+  "performance_observation": {
+    "passed": false,
+    "failed_gates": [
+      "simulation_realtime_factor"
+    ],
+    "scope": "development candidate single-device native telemetry; not final release, browser pacing or fleet scale",
+    "episodes": 3,
+    "actual_unique_samples": 4890,
+    "native_wall_span_s": 83.06101052400025,
+    "simulation_span_s": 76.359375,
+    "simulation_realtime_factor": 0.9193167109125908,
+    "observed_source_hz": 58.83626949840581,
+    "source_gap_pairs": 0,
+    "invalid_frames": 0,
+    "observed_depth_sequences": 153,
+    "distinct_depth_rasters": 141,
+    "required_min_sim_rate": 1.0,
+    "required_min_source_hz": 30,
+    "native_replay_verified": false,
+    "revision": "candidate-native-542d0b163e9f",
+    "observed_wall_s": 90.19411416701041,
+    "errors": [],
+    "hardware_observations": 183,
+    "hardware_episodes": 3
+  },
+  "positive_native_hardware": {
+    "passed": true,
+    "graphics": {
+      "backend": "Vulkan",
+      "adapter_name": "NVIDIA Tegra Orin (nvgpu)",
+      "vendor_id": 4318,
+      "device_type": "IntegratedGpu"
+    },
+    "backend": "cuda",
+    "exact_inference_count": null
+  },
+  "completed_archive": {
+    "passed": true,
+    "download_bytes": 355075,
+    "archive_sha256": "abff3c0a5849b8d3f3d88a7dbcfcb6b95addf41595f087f8db547a4d82e99f7c",
+    "members": 4,
+    "telemetry_rows": 2890,
+    "final_sim_time_s": 45.15625,
+    "changing_depth_rasters": 89,
+    "native_replay_verified": false,
+    "archive_entries_confined": true
+  },
+  "deployed_browser": {
+    "revision": "candidate-native-542d0b163e9f",
+    "depthState": "live",
+    "depthColors": 164,
+    "backend": "CUDA \u00b7 last reported policy",
+    "adapter": "NVIDIA Tegra Orin (nvgpu)",
+    "overflow": false,
+    "consoleErrors": [],
+    "cameraStates": [
+      "Orbit view",
+      "Orbit view",
+      "Follow pose"
+    ],
+    "mobileOverflow": false
+  },
+  "limits": [
+    "single development Jetson only",
+    "not a physical drone/camera",
+    "no native flight replay",
+    "no fleet capacity or deployment-time-saving benchmark",
+    "populated-image redistribution requires owner approval",
+    "later source revisions/images need renewed affected acceptance"
+  ]
+}

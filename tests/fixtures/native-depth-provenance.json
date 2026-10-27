@@ -1,0 +1,9 @@
+{
+  "kind": "genuine contiguous native software-rendered telemetry for parser regression; not Jetson performance or native replay evidence",
+  "upstream_revision": "d46ef87a65c7ba93bcad3c236da99e52cd77f319",
+  "original_trace_sha256": "fe39a650b36c10336258ad06375379a488868f624a953031f35cbb9dbe1bb4a7",
+  "rows": 387,
+  "native_binary_sha256": "751c3e2339fc20eb33c116f91864f1bc1252f270fa0d6d674cd1b13af164c785",
+  "graphics": "llvmpipe software Vulkan",
+  "original_source_bytes_preserved": true
+}

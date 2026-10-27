@@ -5,21 +5,55 @@ import os
 from pathlib import Path
 import urllib.request
 import subprocess
+import tempfile
 
 
 def prepare_source(directory, revision, patches):
+    """Accept pristine or a known patch-stack prefix, never overwrite unknown edits."""
     directory = Path(directory)
     head = subprocess.check_output(["git", "-C", str(directory), "rev-parse", "HEAD"], text=True).strip()
     if head != revision:
         raise ValueError(f"upstream revision mismatch: {head} != {revision}")
+    patches = [str(Path(patch).resolve()) for patch in patches]
+    if not patches:
+        return
+    paths = set()
     for patch in patches:
-        command = ["git", "-C", str(directory), "apply"]
-        patch = str(Path(patch).resolve())
-        already = subprocess.run(command + ["--reverse", "--check", patch], capture_output=True)
-        if already.returncode == 0:
-            continue
-        subprocess.run(command + ["--check", patch], check=True)
-        subprocess.run(command + [patch], check=True)
+        stats = subprocess.check_output(["git", "apply", "--numstat", patch], text=True)
+        for line in stats.splitlines():
+            name = line.split('\t', 2)[2]
+            path = Path(name)
+            if path.is_absolute() or '..' in path.parts or name.startswith('"'):
+                raise ValueError('unsupported or unsafe patch path')
+            paths.add(name)
+
+    def snapshot(root):
+        return {name: (root / name).read_bytes() if (root / name).is_file() else None for name in paths}
+
+    # Reverse-checking an early patch independently is not idempotent when a
+    # later patch overlaps its hunks. Reconstruct the small touched-file set.
+    with tempfile.TemporaryDirectory(prefix='copper-patch-stack-') as temporary:
+        expected = Path(temporary)
+        subprocess.run(['git', 'init', '--quiet', str(expected)], check=True)
+        for name in paths:
+            original = subprocess.run(['git', '-C', str(directory), 'show', f'{revision}:{name}'], capture_output=True)
+            if original.returncode == 0:
+                target = expected / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(original.stdout)
+        stages = [snapshot(expected)]
+        for patch in patches:
+            subprocess.run(['git', '-C', str(expected), 'apply', '--check', patch], check=True)
+            subprocess.run(['git', '-C', str(expected), 'apply', patch], check=True)
+            stages.append(snapshot(expected))
+        current = snapshot(directory)
+        matches = [index for index, stage in enumerate(stages) if current == stage]
+        if not matches:
+            raise ValueError('source has unrecognized edits in patched files; refusing to overwrite')
+        for patch in patches[max(matches):]:
+            command = ['git', '-C', str(directory), 'apply']
+            subprocess.run(command + ['--check', patch], check=True)
+            subprocess.run(command + [patch], check=True)
 
 
 def acquire_blob(url, destination, sha256, size):

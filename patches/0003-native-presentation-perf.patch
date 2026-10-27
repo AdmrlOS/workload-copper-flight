@@ -1,0 +1,14 @@
+diff --git a/examples/cu_flight_controller/src/sim.rs b/examples/cu_flight_controller/src/sim.rs
+--- a/examples/cu_flight_controller/src/sim.rs
++++ b/examples/cu_flight_controller/src/sim.rs
+@@ -1876,6 +1876,10 @@ fn setup_world(
+     if layout.split_monitor || native_offscreen() {
+         camera.insert((
+             Camera {
++                // No consumer reads this presentation target in native offscreen
++                // mode. Keep both ZED sensor cameras and their readbacks active;
++                // they are separate entities with orders -2 and -1 below.
++                is_active: !native_offscreen(),
+                 order: 0,
+                 ..default()
+             },
