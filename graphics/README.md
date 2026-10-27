@@ -1,6 +1,6 @@
 # Isolated headless Vulkan payload and depth probe
 
-## Verified outcome and current packaging blocker
+## Verified outcome and NVIDIA EGL closure
 
 The release probe was built and executed as **Linux ARM64**, using the cached
 native toolchain and a separate `copper-flight-graphics-target` volume. No native
@@ -13,13 +13,19 @@ The explicit `--software-verification` invocation selected Mesa llvmpipe
 background `(4,4)=1.0`. This is **software-not-Jetson-proof**. Default invocation
 forced NVIDIA and failed locally with `surface-free adapter request: No suitable
 graphics adapter found ... vulkan drivers/libraries could not be loaded`.
-No Jetson graphics process was run, and neither result establishes Bevy's actual
-camera or native CUDA-policy acceptance.
+Those original local runs established neither Jetson graphics nor native CUDA.
+The subsequent on-device EGL-overlay test passed actual NVIDIA Vulkan depth
+rasterization/readback on Tegra Orin (vendor 0x10de, IntegratedGpu, depths 0.25/1.0).
+The same native CUDA binary then exited 0 at 8.1875 simulated seconds, with 35
+real telemetry rows, armed+AUTO, finite policy output and policy publication
+sequence 326. This was 48.4 wall seconds, not a real-time performance claim.
+See `verification.json` under `nvidia_hardware_followup`; the overlay proof is
+distinct from subsequent final baked-image acceptance.
 
 **Completed locally:** following renewed user approval, the real two NVIDIA
 archives were checksum-verified and assembled without installation. The lock now
-contains 18 paths: seven missing matching libraries, the ICD JSON and its packaged
-link, and nine documentation/license files. Every staged byte and link was checked
+contains 21 paths: nine matching libraries, the Vulkan ICD JSON and its packaged
+link, the NVIDIA EGL vendor JSON, and nine documentation/license files. Every staged byte and link was checked
 against the lock, and all 25 injected basenames remain excluded. Evidence is in
 `artifacts/graphics-payload/verification.json`; target GPU execution remains a
 separate acceptance gate. This does not establish legal clearance for unrestricted
@@ -113,9 +119,14 @@ has matching bytes. Verify the final rootfs with its own ARM64 loader/`ldd`;
 image-only `ldd` may correctly report injected NVGPU companions missing until
 Admiral supplies them. Do not “repair” that by adding duplicates.
 
-No EGL, GBM, compositor, KMS surface, X server, module, firmware, host package,
-or container toolkit is needed by this independent probe. A display-controller
-failure is not evidence that this surface-free NVGPU test fails.
+Surface-free NVIDIA Vulkan still requires the hidden runtime EGL closure:
+`tegra-egl/libEGL_nvidia.so.0`, `nvidia/libnvidia-eglcore.so.595.78` and the
+regular `tegra-egl/nvidia.json`. GLX dynamically asks EGL for `glGetVkProcAddrNV`;
+`ldd` alone misses this dependency. The image explicitly selects that regular
+vendor JSON with `__EGL_VENDOR_LIBRARY_FILENAMES` and adds `tegra-egl` to its
+image-owned library path. No relative-link normalization or assembler behavior
+change is required. Injected libraries retain precedence. No compositor, KMS
+surface, X server, module, firmware, host package or container toolkit was changed.
 
 ## Probe contract and reproduction
 

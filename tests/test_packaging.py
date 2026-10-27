@@ -20,6 +20,27 @@ class PackagedImageTests(unittest.TestCase):
                          'the measured 12-second log footprint does not establish that 45 seconds fit 4 GiB')
 
 
+    def test_nvidia_surface_free_driver_has_its_runtime_egl_vendor_closure(self):
+        metadata = json.loads(subprocess.check_output(
+            ['docker', 'image', 'inspect', os.environ['FLIGHT_IMAGE']], text=True))[0]
+        environment = dict(item.split('=', 1) for item in metadata['Config'].get('Env', []))
+        self.assertEqual(environment.get('__EGL_VENDOR_LIBRARY_FILENAMES'),
+                         '/usr/lib/aarch64-linux-gnu/tegra-egl/nvidia.json')
+        self.assertIn('/usr/lib/aarch64-linux-gnu/tegra-egl',
+                      environment.get('LD_LIBRARY_PATH', '').split(':'))
+        script = '''import json,pathlib
+lock=json.loads(pathlib.Path('/opt/copper-flight/provenance/payload.lock.json').read_text())
+paths={entry['path'] for entry in lock['files']}
+assert {'usr/lib/aarch64-linux-gnu/tegra-egl/libEGL_nvidia.so.0',
+        'usr/lib/aarch64-linux-gnu/nvidia/libnvidia-eglcore.so.595.78',
+        'usr/lib/aarch64-linux-gnu/tegra-egl/nvidia.json'} <= paths
+assert json.loads(pathlib.Path('/usr/lib/aarch64-linux-gnu/tegra-egl/nvidia.json').read_text())['ICD']['library_path']=='libEGL_nvidia.so.0'
+'''
+        result = subprocess.run(['docker', 'run', '--rm', '--network', 'none', '--entrypoint',
+                                 'python3', os.environ['FLIGHT_IMAGE'], '-c', script],
+                                capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_final_contains_locked_graphics_probe_and_observed_adapter_binary(self):
         from pathlib import Path
         root = Path(__file__).resolve().parents[1]

@@ -41,6 +41,13 @@
     },
     {
       "package": "nvidia-l4t-3d-core",
+      "path": "usr/lib/aarch64-linux-gnu/nvidia/libnvidia-eglcore.so.595.78",
+      "type": "file",
+      "bytes": 24275544,
+      "sha256": "4c02faff0ef93cf8dc01940438f2a52793e6a37badcd4fd19c3968bf95ad43f4"
+    },
+    {
+      "package": "nvidia-l4t-3d-core",
       "path": "usr/lib/aarch64-linux-gnu/nvidia/libnvidia-glcore.so.595.78",
       "type": "file",
       "bytes": 25966824,
@@ -87,6 +94,20 @@
       "type": "file",
       "bytes": 140,
       "sha256": "8bf904abc1c5d6428a1f27cc5d4a3c9783d15231f17ce1ef8d25e9cab1f60d1c"
+    },
+    {
+      "package": "nvidia-l4t-3d-core",
+      "path": "usr/lib/aarch64-linux-gnu/tegra-egl/libEGL_nvidia.so.0",
+      "type": "file",
+      "bytes": 1380592,
+      "sha256": "ee1011d963b90bbf0eada862235bb0aa91ad4f4c4f858c1d1e2bdab1749e46df"
+    },
+    {
+      "package": "nvidia-l4t-3d-core",
+      "path": "usr/lib/aarch64-linux-gnu/tegra-egl/nvidia.json",
+      "type": "file",
+      "bytes": 107,
+      "sha256": "9e6f14afaa7523370ad96e6675d3357441ee3985e60405cb3e0ced30b2ddaf76"
     },
     {
       "package": "nvidia-l4t-3d-core",

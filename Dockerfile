@@ -110,10 +110,11 @@ ENV IMAGE_REVISION=${IMAGE_REVISION}
 COPY --from=headless-graphics-payload /graphics-rootfs/ /
 COPY --from=probe-binary /copper-vulkan-depth-probe /usr/local/bin/copper-vulkan-depth-probe
 COPY graphics/payload.lock.json /opt/copper-flight/provenance/payload.lock.json
-RUN printf '%s\n' /usr/lib/aarch64-linux-gnu/nvidia > /etc/ld.so.conf.d/copper-headless-vulkan.conf && ldconfig
+RUN printf '%s\n' /usr/lib/aarch64-linux-gnu/nvidia /usr/lib/aarch64-linux-gnu/tegra-egl > /etc/ld.so.conf.d/copper-headless-vulkan.conf && ldconfig
 ENV VK_DRIVER_FILES=/etc/vulkan/icd.d/nvidia_icd.json \
     VK_ICD_FILENAMES=/etc/vulkan/icd.d/nvidia_icd.json \
-    LD_LIBRARY_PATH=/run/admiral/nvidia/lib:/usr/lib/aarch64-linux-gnu/nvidia:/usr/local/lib
+    __EGL_VENDOR_LIBRARY_FILENAMES=/usr/lib/aarch64-linux-gnu/tegra-egl/nvidia.json \
+    LD_LIBRARY_PATH=/run/admiral/nvidia/lib:/usr/lib/aarch64-linux-gnu/nvidia:/usr/lib/aarch64-linux-gnu/tegra-egl:/usr/local/lib
 COPY service.py boot.py /opt/copper-flight/
 COPY runtime/ /opt/copper-flight/runtime/
 COPY scripts/start-flight scripts/run-native-flight /opt/copper-flight/scripts/

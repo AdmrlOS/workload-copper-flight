@@ -21,5 +21,134 @@
   "executable_sha256": "6e7189182cba629910e259936de27c23828e09fbd81dd3e1ffceadfc51b93c0d",
   "artifact_path": "/Users/aturner/.hermes/cache/scratch/copper-flight-graphics-proof/copper-vulkan-depth-probe",
   "device_executed": false,
-  "payload_lock_and_license_write": "completed after renewed approval; real two-package staging and 18-path inventory verified; see artifacts/graphics-payload/verification.json"
+  "payload_lock_and_license_write": "completed after renewed approval; real two-package staging and 18-path inventory verified; see artifacts/graphics-payload/verification.json",
+  "nvidia_hardware_followup": {
+    "device_id": "bcce44d5-ab16-4184-8d92-b5e6f7f4c8a1",
+    "scope": "same immutable native/probe binaries with checksum-verified EGL libraries in a data-directory overlay; final baked-image acceptance still required",
+    "device_executed": true,
+    "probe": {
+      "adapter": {
+        "backend": "Vulkan",
+        "device": 2545550295,
+        "device_type": "IntegratedGpu",
+        "driver": "NVIDIA",
+        "driver_info": "595.78",
+        "name": "NVIDIA Tegra Orin (nvgpu)",
+        "vendor": "0x10de"
+      },
+      "bytes_per_row": 256,
+      "clear_depth": 1.0,
+      "compatible_surface": null,
+      "deadline_seconds": 25,
+      "depth": {
+        "background": 1.0,
+        "background_xy": [
+          4,
+          4
+        ],
+        "center": 0.25,
+        "center_xy": [
+          32,
+          32
+        ],
+        "mapped_bytes": 16384,
+        "tolerance": 0.0001
+      },
+      "elapsed_ms": 676,
+      "force_fallback_adapter": false,
+      "format": "Depth32Float",
+      "height": 64,
+      "proof": "NVIDIA-hardware-required",
+      "rasterized": true,
+      "schema": 1,
+      "status": "passed",
+      "triangle_depth": 0.25,
+      "vk_driver_files": "/etc/vulkan/icd.d/nvidia_icd.json",
+      "vk_icd_filenames": "/etc/vulkan/icd.d/nvidia_icd.json",
+      "width": 64
+    },
+    "native": {
+      "returncode": 0,
+      "failure": null,
+      "elapsed_seconds": 48.415079485974275,
+      "max_observed_bytes": 805326940,
+      "frames": 35,
+      "first": {
+        "schema_version": 1,
+        "seq": 0,
+        "sim_time_s": 0,
+        "position_m": null,
+        "rotation": null,
+        "velocity_m_s": null,
+        "armed": false,
+        "auto_enabled": false,
+        "mode": "Acro",
+        "world": "forest",
+        "policy_prediction_m_s": null,
+        "policy_observation_seq": 0,
+        "inference_backend": "cuda",
+        "inference_count": null,
+        "graphics_backend": "Vulkan",
+        "graphics_adapter": "NVIDIA Tegra Orin (nvgpu)",
+        "graphics_vendor_id": 4318,
+        "graphics_device_type": "IntegratedGpu"
+      },
+      "last": {
+        "schema_version": 1,
+        "seq": 34,
+        "sim_time_s": 8.1875,
+        "position_m": {
+          "x": -9.705049,
+          "y": 6.0551014,
+          "z": -1.6208415
+        },
+        "rotation": {
+          "x": -0.059840247,
+          "y": -0.057877418,
+          "z": 0.03331354,
+          "w": 0.9959717
+        },
+        "velocity_m_s": {
+          "x": 3.222609,
+          "y": 2.0031497,
+          "z": -11.27446
+        },
+        "armed": true,
+        "auto_enabled": true,
+        "mode": "Angle",
+        "world": "forest",
+        "policy_prediction_m_s": {
+          "x": 11.726346,
+          "y": -0.20082492,
+          "z": 2.5401773
+        },
+        "policy_observation_seq": 326,
+        "inference_backend": "cuda",
+        "inference_count": null,
+        "graphics_backend": "Vulkan",
+        "graphics_adapter": "NVIDIA Tegra Orin (nvgpu)",
+        "graphics_vendor_id": 4318,
+        "graphics_device_type": "IntegratedGpu"
+      },
+      "auto_armed_rows": 17,
+      "actual_backends": [
+        "cuda"
+      ]
+    },
+    "source_file_hashes": [
+      {
+        "name": "libnvidia-eglcore.so.595.78",
+        "sha256": "4c02faff0ef93cf8dc01940438f2a52793e6a37badcd4fd19c3968bf95ad43f4"
+      },
+      {
+        "name": "libEGL_nvidia.so.0",
+        "sha256": "ee1011d963b90bbf0eada862235bb0aa91ad4f4c4f858c1d1e2bdab1749e46df"
+      },
+      {
+        "name": "nvidia.json",
+        "sha256": "9e6f14afaa7523370ad96e6675d3357441ee3985e60405cb3e0ced30b2ddaf76"
+      }
+    ],
+    "staging_evidence": "artifacts/graphics-egl/staging.json"
+  }
 }
