@@ -1,0 +1,16 @@
+.git
+**/.git
+**/target
+**/__pycache__
+**/*.pyc
+artifacts
+.cache
+.env*
+data
+recordings
+upstream
+acquired
+vendor-assets
+www/verification
+www/.*
+www/*.test.js

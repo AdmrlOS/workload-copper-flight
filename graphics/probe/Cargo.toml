@@ -1,0 +1,20 @@
+[package]
+name = "copper-vulkan-depth-probe"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+rust-version = "1.87"
+
+[dependencies]
+wgpu = { version = "=29.0.4", default-features = false, features = ["std", "vulkan", "wgsl", "parking_lot"] }
+serde_json = "=1.0.154"
+
+[profile.release]
+debug = 0
+strip = true
+
+[profile.dev]
+debug = 0
+
+[profile.test]
+debug = 0

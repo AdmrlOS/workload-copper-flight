@@ -1,0 +1,9 @@
+#!/usr/bin/env python3
+"""Execute the real offline flight binary; no simulation substitute."""
+from pathlib import Path
+import runpy
+import sys
+
+root = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(root))
+runpy.run_module("runtime.native_launch", run_name="__main__")

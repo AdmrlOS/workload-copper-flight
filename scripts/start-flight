@@ -1,0 +1,9 @@
+#!/usr/bin/env python3
+"""Root entrypoint: secure boot owns display, never root service HTTP."""
+from pathlib import Path
+import runpy
+import sys
+
+root = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(root))
+runpy.run_path(str(root / "boot.py"), run_name="__main__")

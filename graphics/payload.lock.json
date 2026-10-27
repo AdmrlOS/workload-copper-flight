@@ -1,0 +1,239 @@
+{
+  "schema_version": 1,
+  "profile": "tegra234-nvgpu-r39.2.1-v1",
+  "l4t_version": "39.2.1",
+  "driver_version": "595.78",
+  "packages": [
+    {
+      "name": "nvidia-l4t-3d-core",
+      "archive": "nvidia-l4t-3d-core.deb",
+      "version": "39.2.1-20260806224157",
+      "architecture": "arm64",
+      "bytes": 142732666,
+      "sha256": "77fcb6c2c11ed67403f8e7697aab9d6ef11a2acbde86dd38a062a8945d5d8631",
+      "url": "https://repo.download.nvidia.com/jetson/som/pool/main/n/nvidia-l4t-3d-core/nvidia-l4t-3d-core_39.2.1-20260806224157_arm64.deb",
+      "repository_index": "https://repo.download.nvidia.com/jetson/som/dists/r39.2/main/binary-arm64/Packages.gz"
+    },
+    {
+      "name": "nvidia-l4t-core",
+      "archive": "nvidia-l4t-core.deb",
+      "version": "39.2.1-20260806224157",
+      "architecture": "arm64",
+      "bytes": 4093186,
+      "sha256": "277a6fb25f2c06cc2dee6d352bef3abb15929739f396fea1cee70d1dea83008b",
+      "url": "https://repo.download.nvidia.com/jetson/som/pool/main/n/nvidia-l4t-core/nvidia-l4t-core_39.2.1-20260806224157_arm64.deb",
+      "repository_index": "https://repo.download.nvidia.com/jetson/som/dists/r39.2/main/binary-arm64/Packages.gz"
+    }
+  ],
+  "files": [
+    {
+      "package": "nvidia-l4t-3d-core",
+      "path": "etc/vulkan/icd.d/nvidia_icd.json",
+      "type": "symlink",
+      "target": "/usr/lib/aarch64-linux-gnu/nvidia/nvidia_icd.json"
+    },
+    {
+      "package": "nvidia-l4t-3d-core",
+      "path": "usr/lib/aarch64-linux-gnu/nvidia/libGLX_nvidia.so.0",
+      "type": "file",
+      "bytes": 1269208,
+      "sha256": "35962b6a9ade6979114b9b5086da8417cc664e4ef20624b86426ca8e8a7612f4"
+    },
+    {
+      "package": "nvidia-l4t-3d-core",
+      "path": "usr/lib/aarch64-linux-gnu/nvidia/libnvidia-glcore.so.595.78",
+      "type": "file",
+      "bytes": 25966824,
+      "sha256": "924a7d577981c0212fe04e2df972452035b20c4073a6f81cf8830bb37de62cf3"
+    },
+    {
+      "package": "nvidia-l4t-3d-core",
+      "path": "usr/lib/aarch64-linux-gnu/nvidia/libnvidia-glsi.so.595.78",
+      "type": "file",
+      "bytes": 644840,
+      "sha256": "503f81cba266d2659c790cabe06caf4d0fcea95aaef585d7643b07c969adcdec"
+    },
+    {
+      "package": "nvidia-l4t-3d-core",
+      "path": "usr/lib/aarch64-linux-gnu/nvidia/libnvidia-glvkspirv.so.595.78",
+      "type": "file",
+      "bytes": 9945824,
+      "sha256": "77246fd9e345e23610a67612a0066640e1f801790eb1e70abce909a37e1effbb"
+    },
+    {
+      "package": "nvidia-l4t-core",
+      "path": "usr/lib/aarch64-linux-gnu/nvidia/libnvidia-rmapi-tegra.so.595.78",
+      "type": "file",
+      "bytes": 377568,
+      "sha256": "8b31ecb353db581d4401adef5f64b51c82fd6d5f9200f7251057ee2f77dde311"
+    },
+    {
+      "package": "nvidia-l4t-3d-core",
+      "path": "usr/lib/aarch64-linux-gnu/nvidia/libnvidia-rtcore.so.595.78",
+      "type": "file",
+      "bytes": 29633000,
+      "sha256": "16eff5c42f88dc74c087deabc01c71637d8e6176bd3cd7a589983c71c26e648f"
+    },
+    {
+      "package": "nvidia-l4t-core",
+      "path": "usr/lib/aarch64-linux-gnu/nvidia/libnvidia-tls.so.595.78",
+      "type": "file",
+      "bytes": 10312,
+      "sha256": "92a4b9dfbb6590a278069e9d4a19c263a3226020e5efe725e169585634e5cfe2"
+    },
+    {
+      "package": "nvidia-l4t-3d-core",
+      "path": "usr/lib/aarch64-linux-gnu/nvidia/nvidia_icd.json",
+      "type": "file",
+      "bytes": 140,
+      "sha256": "8bf904abc1c5d6428a1f27cc5d4a3c9783d15231f17ce1ef8d25e9cab1f60d1c"
+    },
+    {
+      "package": "nvidia-l4t-3d-core",
+      "path": "usr/share/doc/nvidia-l4t-3d-core/LICENSE.libEGL_nvidia",
+      "type": "file",
+      "bytes": 1168,
+      "sha256": "2054fff300fcf60ab6ca3d575d0884d50b3d683c5cc63980c76ee85214889a06"
+    },
+    {
+      "package": "nvidia-l4t-3d-core",
+      "path": "usr/share/doc/nvidia-l4t-3d-core/LICENSE.libGLX_nvidia-libglxserver_nvidia",
+      "type": "file",
+      "bytes": 3406,
+      "sha256": "ebc545c4827b2c819ab00789ea8990b1ae2ab3b539e9b1167e047818efc4ec3f"
+    },
+    {
+      "package": "nvidia-l4t-3d-core",
+      "path": "usr/share/doc/nvidia-l4t-3d-core/LICENSE.libnvidia-rtcore.gz",
+      "type": "file",
+      "bytes": 2554,
+      "sha256": "db2ba7cb24a05451ba50432f4d77be1a2b25aad09b41de0e6a24729388c4dd4f"
+    },
+    {
+      "package": "nvidia-l4t-3d-core",
+      "path": "usr/share/doc/nvidia-l4t-3d-core/changelog.Debian.gz",
+      "type": "file",
+      "bytes": 212,
+      "sha256": "8748ce9ab2644cf1820c914bba45012267239130344a8c85d895606b0bbb6b68"
+    },
+    {
+      "package": "nvidia-l4t-3d-core",
+      "path": "usr/share/doc/nvidia-l4t-3d-core/copyright",
+      "type": "file",
+      "bytes": 23180,
+      "sha256": "96428b6e85dcc0336e672ff365b4d277eef038f4dece7cc7a6dff828145eeabe"
+    },
+    {
+      "package": "nvidia-l4t-core",
+      "path": "usr/share/doc/nvidia-l4t-core/LICENSE.libnvidia-rmapi-tegra",
+      "type": "file",
+      "bytes": 548,
+      "sha256": "2395cebf11be9a83df95be7fa872d147a0536b8b509f0a639e45070537cd3c87"
+    },
+    {
+      "package": "nvidia-l4t-core",
+      "path": "usr/share/doc/nvidia-l4t-core/Tegra_Software_License_Agreement-Tegra-Linux.txt.gz",
+      "type": "file",
+      "bytes": 8685,
+      "sha256": "8c9121ae6f7651e7e98afb9828ed872597b911377fe3480f1b81954da2021be6"
+    },
+    {
+      "package": "nvidia-l4t-core",
+      "path": "usr/share/doc/nvidia-l4t-core/changelog.Debian.gz",
+      "type": "file",
+      "bytes": 210,
+      "sha256": "0076ec382d65c4babaca584fddb3633225dcebd9fd0de6cf790949a955fe07f3"
+    },
+    {
+      "package": "nvidia-l4t-core",
+      "path": "usr/share/doc/nvidia-l4t-core/copyright",
+      "type": "file",
+      "bytes": 23177,
+      "sha256": "1b648a06caf4c771b732a8ef2d56c6de94c1852d8eb85bb76e849a6b18065830"
+    }
+  ],
+  "injected_library_exclusions": [
+    "libcuda.so",
+    "libcuda.so.1",
+    "libcuda.so.1.1",
+    "libcuda_instrumentation.so",
+    "libcuda_instrumentation.so.1",
+    "libnvcucompat.so",
+    "libnvcuextend.so",
+    "libnvidia-gpucomp.so.595.78",
+    "libnvidia-nvvm.so.4",
+    "libnvidia-nvvm.so.595.78",
+    "libnvidia-nvvm70.so.4",
+    "libnvidia-nvvm70.so.595.78",
+    "libnvidia-ptxjitcompiler.so.1",
+    "libnvidia-ptxjitcompiler.so.595.78",
+    "libnvidia-tileiras.so.595.78",
+    "libnvos.so",
+    "libnvrm_chip.so",
+    "libnvrm_gpu.so",
+    "libnvrm_host1x.so",
+    "libnvrm_mem.so",
+    "libnvrm_surface.so",
+    "libnvrm_sync.so",
+    "libnvsciipc.so",
+    "libnvsocsys.so",
+    "libnvtegrahv.so"
+  ],
+  "provenance": "NVIDIA HTTPS repository package index hashes; data-only extraction; no maintainer scripts",
+  "license_notices": [
+    {
+      "package": "nvidia-l4t-3d-core",
+      "source_path": "usr/share/doc/nvidia-l4t-3d-core/LICENSE.libEGL_nvidia",
+      "sha256": "2054fff300fcf60ab6ca3d575d0884d50b3d683c5cc63980c76ee85214889a06",
+      "bytes": 1168
+    },
+    {
+      "package": "nvidia-l4t-3d-core",
+      "source_path": "usr/share/doc/nvidia-l4t-3d-core/LICENSE.libGLX_nvidia-libglxserver_nvidia",
+      "sha256": "ebc545c4827b2c819ab00789ea8990b1ae2ab3b539e9b1167e047818efc4ec3f",
+      "bytes": 3406
+    },
+    {
+      "package": "nvidia-l4t-3d-core",
+      "source_path": "usr/share/doc/nvidia-l4t-3d-core/LICENSE.libnvidia-rtcore.gz",
+      "sha256": "db2ba7cb24a05451ba50432f4d77be1a2b25aad09b41de0e6a24729388c4dd4f",
+      "bytes": 2554
+    },
+    {
+      "package": "nvidia-l4t-3d-core",
+      "source_path": "usr/share/doc/nvidia-l4t-3d-core/changelog.Debian.gz",
+      "sha256": "8748ce9ab2644cf1820c914bba45012267239130344a8c85d895606b0bbb6b68",
+      "bytes": 212
+    },
+    {
+      "package": "nvidia-l4t-3d-core",
+      "source_path": "usr/share/doc/nvidia-l4t-3d-core/copyright",
+      "sha256": "96428b6e85dcc0336e672ff365b4d277eef038f4dece7cc7a6dff828145eeabe",
+      "bytes": 23180
+    },
+    {
+      "package": "nvidia-l4t-core",
+      "source_path": "usr/share/doc/nvidia-l4t-core/LICENSE.libnvidia-rmapi-tegra",
+      "sha256": "2395cebf11be9a83df95be7fa872d147a0536b8b509f0a639e45070537cd3c87",
+      "bytes": 548
+    },
+    {
+      "package": "nvidia-l4t-core",
+      "source_path": "usr/share/doc/nvidia-l4t-core/Tegra_Software_License_Agreement-Tegra-Linux.txt.gz",
+      "sha256": "8c9121ae6f7651e7e98afb9828ed872597b911377fe3480f1b81954da2021be6",
+      "bytes": 8685
+    },
+    {
+      "package": "nvidia-l4t-core",
+      "source_path": "usr/share/doc/nvidia-l4t-core/changelog.Debian.gz",
+      "sha256": "0076ec382d65c4babaca584fddb3633225dcebd9fd0de6cf790949a955fe07f3",
+      "bytes": 210
+    },
+    {
+      "package": "nvidia-l4t-core",
+      "source_path": "usr/share/doc/nvidia-l4t-core/copyright",
+      "sha256": "1b648a06caf4c771b732a8ef2d56c6de94c1852d8eb85bb76e849a6b18065830",
+      "bytes": 23177
+    }
+  ]
+}

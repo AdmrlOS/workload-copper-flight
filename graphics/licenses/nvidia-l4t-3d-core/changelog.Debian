@@ -1,0 +1,5 @@
+nvidia-l4t-3d-core (39.2.1-20260806224157) stable; urgency=low
+
+  * Refer to Package Release Notes for details: http://developer.nvidia.com/jetson
+
+ -- NVIDIA Corporation <linux-tegra-bugs@nvidia.com>  Thu, 06 Aug 2026 22:41:57 -0700

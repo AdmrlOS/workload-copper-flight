@@ -1,0 +1,25 @@
+{
+  "software": {
+    "exit_code": 0,
+    "output": "{\"adapter\":{\"backend\":\"Vulkan\",\"device\":0,\"device_type\":\"Cpu\",\"driver\":\"llvmpipe\",\"driver_info\":\"Mesa 26.0.8-1ubuntu0.3 (LLVM 21.1.8)\",\"name\":\"llvmpipe (LLVM 21.1.8, 128 bits)\",\"vendor\":\"0x10005\"},\"bytes_per_row\":256,\"clear_depth\":1.0,\"compatible_surface\":null,\"deadline_seconds\":25,\"depth\":{\"background\":1.0,\"background_xy\":[4,4],\"center\":0.25,\"center_xy\":[32,32],\"mapped_bytes\":16384,\"tolerance\":0.0001},\"elapsed_ms\":54,\"force_fallback_adapter\":false,\"format\":\"Depth32Float\",\"height\":64,\"proof\":\"software-not-Jetson-proof\",\"rasterized\":true,\"schema\":1,\"status\":\"passed\",\"triangle_depth\":0.25,\"vk_driver_files\":\"/usr/share/vulkan/icd.d/lvp_icd.json\",\"vk_icd_filenames\":\"/usr/share/vulkan/icd.d/lvp_icd.json\",\"width\":64}"
+  },
+  "nvidia_default": {
+    "exit_code": 1,
+    "output": "{\"bytes_per_row\":256,\"clear_depth\":1.0,\"compatible_surface\":null,\"deadline_seconds\":25,\"elapsed_ms\":0,\"error\":\"surface-free adapter request: No suitable graphics adapter found; noop not requested, vulkan drivers/libraries could not be loaded, metal not requested, dx12 not requested, gl not requested, webgpu not requested\",\"force_fallback_adapter\":false,\"format\":\"Depth32Float\",\"height\":64,\"proof\":\"NVIDIA-hardware-required\",\"rasterized\":false,\"schema\":1,\"status\":\"failed\",\"triangle_depth\":0.25,\"vk_driver_files\":\"/etc/vulkan/icd.d/nvidia_icd.json\",\"vk_icd_filenames\":\"/etc/vulkan/icd.d/nvidia_icd.json\",\"width\":64}"
+  },
+  "python_tests": {
+    "exit_code": 0,
+    "output": "test_assemble_real_deb_without_installing_or_following_links (test_graphics_payload.GraphicsPayloadTests.test_assemble_real_deb_without_installing_or_following_links) ... ok\ntest_extract_only_locked_regular_files_with_matching_hash (test_graphics_payload.GraphicsPayloadTests.test_extract_only_locked_regular_files_with_matching_hash) ... ok\ntest_lock_graph_rejects_duplicates_and_symlink_escapes (test_graphics_payload.GraphicsPayloadTests.test_lock_graph_rejects_duplicates_and_symlink_escapes) ... ok\ntest_lock_rejects_injected_basename_in_any_directory (test_graphics_payload.GraphicsPayloadTests.test_lock_rejects_injected_basename_in_any_directory) ... ok\ntest_rejects_noncanonical_source_paths (test_graphics_payload.GraphicsPayloadTests.test_rejects_noncanonical_source_paths) ... ok\ntest_tar_rejects_existing_symlink_ancestors_and_duplicate_members (test_graphics_payload.GraphicsPayloadTests.test_tar_rejects_existing_symlink_ancestors_and_duplicate_members) ... ok\ntest_default_is_nvidia_only_and_fails_on_local_mesa_host (test_graphics_payload.LocalRasterProbeTests.test_default_is_nvidia_only_and_fails_on_local_mesa_host) ... ok\ntest_explicit_software_rasterizes_and_overrides_both_icd_variables (test_graphics_payload.LocalRasterProbeTests.test_explicit_software_rasterizes_and_overrides_both_icd_variables) ... ok\n\n----------------------------------------------------------------------\nRan 8 tests in 0.086s\n\nOK"
+  },
+  "schema": 1,
+  "proof": "software-not-Jetson-proof",
+  "image_id": "sha256:1b008ff8b5353c300ad9c7c47fd7580a1f2e8e138a251bbd4f7e45202478a0fc",
+  "image_architecture": "arm64",
+  "image_os": "linux",
+  "runtime_base_image": "sha256:761fcc11bac2f8b0c5ec46953a431570c97b72b59c8303795091bd67447aeb55",
+  "toolchain_image": "sha256:7352936f86873fd6e3758dbbe8577f8088c39ac43c89dd5ea796934219a49cc0",
+  "executable_sha256": "6e7189182cba629910e259936de27c23828e09fbd81dd3e1ffceadfc51b93c0d",
+  "artifact_path": "/Users/aturner/.hermes/cache/scratch/copper-flight-graphics-proof/copper-vulkan-depth-probe",
+  "device_executed": false,
+  "payload_lock_and_license_write": "completed after renewed approval; real two-package staging and 18-path inventory verified; see artifacts/graphics-payload/verification.json"
+}

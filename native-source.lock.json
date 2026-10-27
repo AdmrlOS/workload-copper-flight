@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "repository": "https://github.com/copper-project/copper-rs.git",
+  "revision": "d46ef87a65c7ba93bcad3c236da99e52cd77f319",
+  "rust_image": "rust:slim-bookworm@sha256:86234e857a413004348b471d11a4ebe1aa92d2eae2b6b143cac68fd1ac3c48be",
+  "runtime_image": "ubuntu:26.04@sha256:e03767b4dc7cb87fc57b1f119d40d9a997ecc5570dc6e22d57d6b7e333bbe78c",
+  "cuda": {"repository": "https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/arm64/", "nvcc": "12.6.85-1", "cudart": "12.6.77-1", "compute_capability": "87"},
+  "features": ["sim", "forest-world", "autonomous-demo"],
+  "cuda_features": ["vitfly-cuda", "forest-world", "autonomous-demo"],
+  "source_license": "Apache-2.0 (upstream LICENSE); cu-vitfly declares MIT OR Apache-2.0",
+  "cdn_asset_terms": "Source references public CDN but supplies no independently verified asset/model redistribution grant; private evaluation only pending rights review. Preserve provenance and upstream notices.",
+  "city_asset_notice": "city-fixed.glb embeds author akselmot, title Modern City Block, Sketchfab Standard license, source c80dba249d9547cbb48d00828d23cfa7; acquired/checksummed for provenance but deliberately excluded from the forest runtime image. Forest and quadcopter GLB metadata contain no copyright/license field."
+}

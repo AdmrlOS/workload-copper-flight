@@ -1,0 +1,14 @@
+/upstream/
+/vendor-assets/
+/acquired/
+/target/
+/artifacts/
+/.cache/
+__pycache__/
+*.pyc
+.env*
+/data/
+/recordings/
+/www/verification/
+/www/.browser*
+/www/.actual*

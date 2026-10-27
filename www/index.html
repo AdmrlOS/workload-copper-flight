@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#090d26">
+  <meta name="color-scheme" content="light">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Native flight monitor · Admiral</title>
+  <link rel="icon" href="./assets/admiral-icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to runtime status</a>
+  <aside class="sidebar" aria-label="Workload navigation">
+    <div class="brand"><img src="./assets/admiral-logo-light.svg" width="148" height="33" alt="Admiral"></div>
+    <p class="eyebrow sidebar-kicker">Workload monitor</p>
+    <nav aria-label="Monitor sections">
+      <a href="#overview"><span>01</span> Overview <span class="nav-arrow" aria-hidden="true">↗</span></a>
+      <a href="#telemetry"><span>02</span> Flight telemetry</a>
+      <a href="#inference"><span>03</span> Inference</a>
+      <a href="#recordings"><span>04</span> Recordings</a>
+      <a href="#runtime"><span>05</span> Runtime source</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <span class="square-label">Simulation only</span>
+      <p>No physical actuation.<br>No drone or camera required.</p>
+      <p class="eyebrow">Read-only surface</p>
+    </div>
+  </aside>
+
+  <main id="main" tabindex="-1">
+    <header class="masthead" id="overview">
+      <div class="masthead-top"><p class="eyebrow">Admiral / Demos / Copper</p><p class="eyebrow target-label">Edge runtime → browser monitor</p></div>
+      <div class="title-row"><div><h1>Native flight monitor<span class="period">.</span></h1><p class="subtitle">Native Copper compute. Observed 3D scene in browser WebGL2.</p></div><div class="title-tags"><span class="square-label readonly">Simulation only</span><span class="square-label readonly">Read only</span></div></div>
+    </header>
+
+    <section class="status-band" aria-labelledby="status-label" data-health="connecting" id="status-band">
+      <div class="status-primary" role="status" aria-live="polite" aria-atomic="true">
+        <p class="eyebrow"><span class="status-dot" aria-hidden="true"></span> Native telemetry</p>
+        <h2 id="status-label">Connecting to monitor</h2>
+        <p id="status-detail">Waiting for a valid response from the local runtime.</p>
+      </div>
+      <dl class="status-metrics">
+        <div><dt>Frame sequence</dt><dd id="frame-seq">—</dd></div>
+        <div><dt>Frame age <span class="unit">s</span></dt><dd id="frame-age">—</dd></div>
+        <div><dt>Uptime <span class="unit">s</span></dt><dd id="uptime">—</dd></div>
+      </dl>
+      <div class="status-foot"><span>Runtime reports <strong id="runtime-status">unknown</strong></span><span id="progress-note">No progress observed</span><span>API poll 5 Hz · stale ≥ 2 s</span></div>
+    </section>
+    <noscript><p class="notice">JavaScript is required to read local runtime telemetry. No live data is displayed.</p></noscript>
+    <p id="error-detail" class="notice error-notice" role="alert" hidden></p>
+
+    <section class="panel scene-panel" id="scene" aria-labelledby="scene-title">
+      <div class="panel-heading"><h2 id="scene-title"><span class="section-number">3D /</span> Native scene observation</h2><span class="square-label">Browser WebGL2 · not a video feed</span></div>
+      <div class="scene-toolbar"><p><span class="scene-key" aria-hidden="true"></span> Native sampled path <span class="toolbar-divider">/</span> <span id="scene-camera">Chase pose</span> · Y-up</p><div><span class="eyebrow">View controls only</span><button id="chase-camera" type="button" aria-pressed="true" disabled>Chase pose</button><button id="frame-vehicle" type="button" disabled>Frame vehicle</button><button id="reset-scene" type="button">Reset scene view</button></div></div>
+      <div class="scene-canvas" id="scene-canvas" data-source="paused" data-assets="loading">
+        <div class="scene-corner"><span class="eyebrow">Forest / Copper</span><span id="scene-sample">No vehicle pose displayed</span></div>
+        <div class="scene-overlay" id="scene-overlay"><p class="eyebrow">Native source required</p><h3 id="scene-overlay-title">Waiting for native pose</h3><p id="scene-overlay-detail">The forest can be explored without telemetry. No vehicle is placed until actual native position and orientation arrive.</p></div>
+        <p class="scene-help">Drag to orbit · wheel / pinch to zoom · right-drag to pan</p>
+      </div>
+      <div class="scene-status"><span id="scene-source">Source not connected</span><span id="scene-assets">Local assets pending</span><span id="scene-trace">0 / 256 observed points</span></div>
+      <p class="panel-note">Browser rendering only. Physics and inference run in the native Copper process. Visualization interpolates between actual samples with a 200 ms presentation delay; never extrapolates. Pose freezes if source progress stops. Camera movement does not control the simulation.</p>
+    </section>
+
+    <div class="overview-grid">
+      <section class="panel telemetry-panel" id="telemetry" aria-labelledby="telemetry-title">
+        <div class="panel-heading"><h2 id="telemetry-title"><span class="section-number">01 /</span> Flight telemetry</h2><span class="eyebrow" id="telemetry-validity">Awaiting frame</span></div>
+        <div class="flight-flags">
+          <div><span class="eyebrow">Armed</span><strong id="armed" class="flag" data-value="unknown">Unknown</strong></div>
+          <div><span class="eyebrow">AUTO</span><strong id="auto-enabled" class="flag" data-value="unknown">Unknown</strong></div>
+          <div><span class="eyebrow">Flight mode</span><strong id="flight-mode">—</strong></div>
+        </div>
+        <table class="vector-table" aria-describedby="coordinate-note">
+          <caption class="sr-only">Position and velocity reported by the native simulation</caption>
+          <thead><tr><th scope="col">Native coordinates</th><th scope="col">X</th><th scope="col">Y</th><th scope="col">Z</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Position <span class="unit">m</span></th><td id="position-x">—</td><td id="position-y">—</td><td id="position-z">—</td></tr>
+            <tr><th scope="row">Velocity <span class="unit">m/s</span></th><td id="velocity-x">—</td><td id="velocity-y">—</td><td id="velocity-z">—</td></tr>
+          </tbody>
+        </table>
+        <dl class="telemetry-meta"><div><dt>Simulation time</dt><dd><span id="sim-time">—</span> <span class="unit">s</span></dd></div><div><dt>Observed world</dt><dd id="observed-world">Unknown</dd></div><div><dt>Frame schema</dt><dd id="frame-schema">—</dd></div></dl>
+        <dl class="rotation-row"><dt>Quaternion <span class="unit">x / y / z / w</span></dt><dd><span id="rotation-x">—</span> / <span id="rotation-y">—</span> / <span id="rotation-z">—</span> / <span id="rotation-w">—</span></dd></dl>
+        <p class="panel-note" id="coordinate-note">Native Bevy X / Y / Z, Y-up, as reported. Values remain unknown until a usable frame arrives.</p>
+      </section>
+
+      <section class="panel execution-panel" aria-labelledby="execution-title">
+        <div class="panel-heading"><h2 id="execution-title"><span class="section-number">02 /</span> Execution boundary</h2></div>
+        <div class="display-summary"><p class="eyebrow blue">Native compute → browser scene</p><h3>Compute stays native.</h3><p>Copper runs the simulation and policy natively. This browser renders observed poses in WebGL2; it does not execute the native runtime.</p></div>
+        <dl class="definition-list execution-data">
+          <div><dt>Native engine</dt><dd id="native-engine">Unknown</dd></div>
+          <div><dt>Graphics backend</dt><dd id="graphics-backend">Unknown</dd></div>
+          <div><dt>Graphics adapter</dt><dd id="graphics-adapter">Unknown</dd></div>
+        </dl>
+        <p class="panel-note">No video stream or physical actuation. A connected host display may also show the native renderer; display connection is not verified here.</p>
+      </section>
+    </div>
+
+    <div class="configuration-grid" id="inference">
+      <section class="panel" aria-labelledby="configuration-title">
+        <div class="panel-heading"><h2 id="configuration-title"><span class="section-number">03 /</span> Requested configuration</h2></div>
+        <dl class="definition-list config-data">
+          <div><dt>World</dt><dd id="requested-world">Unknown</dd></div>
+          <div><dt>Inference</dt><dd id="requested-inference">Unknown</dd></div>
+          <div><dt>Autonomy</dt><dd id="requested-autonomy">Unknown</dd></div>
+          <div><dt>Episode duration</dt><dd><span id="episode-duration">—</span> <span class="unit">s</span></dd></div>
+        </dl>
+        <p class="panel-note">Configuration is intent, not evidence that a backend ran.</p>
+      </section>
+      <section class="panel inference-panel" aria-labelledby="inference-title">
+        <div class="panel-heading"><h2 id="inference-title"><span class="section-number">04 /</span> Observed inference</h2><span id="inference-badge" class="square-label">Unconfirmed</span></div>
+        <dl class="inference-stats"><div><dt>Reported backend</dt><dd id="observed-inference">Unknown</dd></div><div><dt>Exact inference count</dt><dd id="inference-count">—</dd></div></dl>
+        <div class="policy-row"><p>Policy velocity <span class="unit">m/s</span><span class="policy-publication">Observation seq <span id="policy-seq">—</span></span></p><dl><div><dt>X</dt><dd id="policy-x">—</dd></div><div><dt>Y</dt><dd id="policy-y">—</dd></div><div><dt>Z</dt><dd id="policy-z">—</dd></div></dl></div>
+        <p class="panel-note" id="inference-note">No policy evidence yet. Requested configuration is not proof of execution.</p>
+      </section>
+    </div>
+
+    <section class="panel episode-panel" aria-labelledby="episode-title">
+      <div class="episode-title"><p class="eyebrow">Current episode</p><h2 id="episode-title">Awaiting episode</h2></div>
+      <dl><div><dt>Started at · runtime clock</dt><dd id="episode-start">Unknown</dd></div><div><dt>Last response · browser clock</dt><dd id="last-response">Not received</dd></div></dl>
+    </section>
+
+    <section class="panel recordings-panel" id="recordings" aria-labelledby="recordings-title">
+      <div class="panel-heading"><h2 id="recordings-title"><span class="section-number">05 /</span> Native recordings</h2><span class="eyebrow" id="recording-count">Index unknown</span></div>
+      <div class="table-scroll" tabindex="0" aria-label="Scrollable native recording index">
+        <table class="recordings-table"><caption class="sr-only">Native recording files and completed-file downloads</caption><thead><tr><th scope="col">Recording ID</th><th scope="col">State</th><th scope="col">Started · runtime clock</th><th scope="col">Size</th><th scope="col"><span class="sr-only">Download</span></th></tr></thead><tbody id="recording-rows"><tr><td colspan="5" class="empty-state">The recording index has not been received.</td></tr></tbody></table>
+      </div>
+      <p class="panel-note">Downloads are available only for completed native files with a valid local path. A recording is not proof of verified replay.</p>
+    </section>
+
+    <section class="panel runtime-panel" id="runtime" aria-labelledby="runtime-title">
+      <div class="panel-heading"><h2 id="runtime-title"><span class="section-number">06 /</span> Runtime provenance</h2><span class="eyebrow">Reported by /api/state</span></div>
+      <dl class="provenance-list"><div><dt>Copper version</dt><dd id="copper-version">Unknown</dd></div><div><dt>Source revision</dt><dd id="source-revision">Unknown</dd></div><div><dt>Runtime revision</dt><dd id="runtime-revision">Unknown</dd></div></dl>
+    </section>
+
+    <footer class="footer"><div><strong>Admiral</strong> <span class="footer-divider">/</span> Native flight demo <span class="footer-divider">/</span> Powered by Copper</div><p>Simulation only. No physical actuation.</p></footer>
+  </main>
+</body>
+</html>

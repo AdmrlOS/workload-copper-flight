@@ -1,0 +1,4 @@
+# Preserve upstream patches and third-party notice/source bytes exactly.
+graphics/licenses/** -whitespace
+patches/*.patch -whitespace
+www/vendor/** -whitespace

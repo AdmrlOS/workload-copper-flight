@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "assets": [
+    {
+      "url": "https://cdn.copper-robotics.com/forest.glb",
+      "path": "forest.glb",
+      "sha256": "80e73e6084670e89d239c407033d78e592a2e54d3998b328e27f7b0e7b51904c",
+      "size": 640156
+    },
+    {
+      "url": "https://cdn.copper-robotics.com/quadcopter.glb",
+      "path": "quadcopter.glb",
+      "sha256": "dd4e0164ba1188afa388f6fbc80827ccc85ea874111d63c1e3b3a6f3f63f2c50",
+      "size": 1518268
+    },
+    {
+      "url": "https://cdn.copper-robotics.com/city-fixed.glb",
+      "path": "city-fixed.glb",
+      "sha256": "bf7015d85d6af61ee677359f9f7b6515abe318951bcd54be5eafe6405fde9690",
+      "size": 25300804
+    },
+    {
+      "url": "https://cdn.copper-robotics.com/skybox.ktx2",
+      "path": "skybox.ktx2",
+      "sha256": "b1f91b120635723ed56811a4c1087522f297bc3692d9b12f96ecd49e050024ed",
+      "size": 67109344
+    },
+    {
+      "url": "https://cdn.copper-robotics.com/specular_map.ktx2",
+      "path": "specular_map.ktx2",
+      "sha256": "600c5a0d55f289227cdb5c5953eaf492a30c5af09c550e0c6a67f65a84440665",
+      "size": 67109344
+    },
+    {
+      "url": "https://cdn.copper-robotics.com/models/vitfly-vitlstm-f32.safetensors",
+      "path": "models/vitfly-vitlstm-f32.safetensors",
+      "sha256": "fe5543f2adbaab2e3000f5fedbe765cb82d24380a20c0988c7f0023f60a6a207",
+      "size": 14264732
+    }
+  ]
+}

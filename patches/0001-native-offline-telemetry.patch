@@ -1,0 +1,255 @@
+diff --git a/components/tasks/cu_vitfly/src/model.rs b/components/tasks/cu_vitfly/src/model.rs
+index 9a8f453a7..57efb241c 100644
+--- a/components/tasks/cu_vitfly/src/model.rs
++++ b/components/tasks/cu_vitfly/src/model.rs
+@@ -108,6 +108,15 @@ fn validate_model_file(path: PathBuf) -> std::result::Result<PathBuf, CacheError
+ }
+ 
+ fn prepare_model_weights() -> Result<PathBuf> {
++    if let Some(path) = std::env::var_os("COPPER_FLIGHT_MODEL") {
++        let path = PathBuf::from(path);
++        if !model_file_is_valid(&path) {
++            return Err(candle_core::Error::msg(
++                "COPPER_FLIGHT_MODEL is missing or has an invalid size",
++            ));
++        }
++        return Ok(path);
++    }
+     let weights_root = model_root();
+     prepare_model_weights_in(&weights_root)
+ }
+diff --git a/components/tasks/cu_vitfly/src/task.rs b/components/tasks/cu_vitfly/src/task.rs
+index efc9fa887..d303939da 100644
+--- a/components/tasks/cu_vitfly/src/task.rs
++++ b/components/tasks/cu_vitfly/src/task.rs
+@@ -37,6 +37,11 @@ pub struct VitFlyTask {
+ }
+ 
+ impl VitFlyTask {
++    /// Actual initialized tensor device; intended for coarse out-of-band status.
++    pub fn inference_backend(&self) -> &'static str {
++        if self.device.is_cuda() { "cuda" } else { "cpu" }
++    }
++
+     fn from_config(config: Option<&ComponentConfig>) -> CuResult<Self> {
+         let max_depth_m = config_f32(config, "max_depth_m", DEFAULT_MAX_DEPTH_M)?;
+         if !max_depth_m.is_finite() || max_depth_m <= 0.0 {
+@@ -58,6 +63,7 @@ impl VitFlyTask {
+             .transpose()?
+             .flatten()
+             .unwrap_or(0) as usize;
++        let requested_device = std::env::var("FLIGHT_INFERENCE").ok().or(requested_device);
+         let device = select_device(requested_device.as_deref(), cuda_ordinal)?;
+         let model = VitFly::load(&device)
+             .map_err(|err| CuError::new_with_cause("failed to load ViTFly model", err))?;
+diff --git a/examples/cu_flight_controller/src/sim.rs b/examples/cu_flight_controller/src/sim.rs
+index bea474cc8..d85172817 100644
+--- a/examples/cu_flight_controller/src/sim.rs
++++ b/examples/cu_flight_controller/src/sim.rs
+@@ -16,6 +16,10 @@ mod compute_tasks;
+ #[cfg(feature = "sim")]
+ mod messages;
+ #[cfg(feature = "sim")]
++mod native_contract;
++#[cfg(feature = "sim")]
++mod native_status;
++#[cfg(feature = "sim")]
+ #[path = "sim/rc_joystick.rs"]
+ mod rc_joystick;
+ #[cfg(feature = "sim")]
+@@ -461,6 +465,13 @@ mod compute_copper {
+             self.app.run_one_iteration(&mut sim_callback)
+         }
+ 
++        #[cfg(feature = "sim")]
++        pub(super) fn inference_backend(&mut self) -> Option<&'static str> {
++            cu29::reflect::ReflectTaskIntrospection::reflect_task_mut(&mut self.app, "vitfly")
++                .and_then(|task| task.downcast_mut::<cu_vitfly::VitFlyTask>())
++                .map(|task| task.inference_backend())
++        }
++
+         pub(super) fn set_zed_sensors(&self, sensors: sim_zed::SimZedSensors) {
+             self.zed_store.set_sensors(sensors);
+         }
+@@ -591,7 +602,14 @@ struct SimRunOptions {
+ impl Default for SimRunOptions {
+     fn default() -> Self {
+         const AUTOSTART_S: f32 = 4.0;
+-        const EXIT_AFTER_S: f32 = 45.0;
++
++        #[cfg(feature = "sim")]
++        let exit_after_s = native_contract::episode_seconds(
++            std::env::var("FLIGHT_EPISODE_SECONDS").ok().as_deref(),
++        )
++        .expect("invalid episode duration");
++        #[cfg(not(feature = "sim"))]
++        let exit_after_s = 45.0;
+ 
+         Self {
+             autostart_s: cfg!(feature = "autonomous-demo").then_some(AUTOSTART_S),
+@@ -599,7 +617,7 @@ impl Default for SimRunOptions {
+                 feature = "autonomous-demo",
+                 not(target_arch = "wasm32")
+             ))
+-            .then_some(EXIT_AFTER_S),
++            .then_some(exit_after_s),
+         }
+     }
+ }
+@@ -1040,7 +1058,9 @@ fn spawn_pose_components() -> (
+ 
+ #[cfg(not(target_arch = "wasm32"))]
+ fn scene_asset_root() -> PathBuf {
+-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets")
++    std::env::var_os("COPPER_FLIGHT_ASSET_DIR")
++        .map(PathBuf::from)
++        .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets"))
+ }
+ 
+ #[cfg(not(target_arch = "wasm32"))]
+@@ -1157,6 +1177,23 @@ fn precached_asset_path(
+ #[cfg(not(target_arch = "wasm32"))]
+ fn prepare_scene_assets() -> SceneAssetPaths {
+     let asset_root = scene_asset_root();
++    if std::env::var_os("COPPER_FLIGHT_ASSET_DIR").is_some() {
++        let paths = [QUADCOPTER, SIM_WORLD.asset_name, SKYBOX, SPECULAR_MAP].map(|name| {
++            let path = asset_root.join(name);
++            assert!(
++                path.is_file(),
++                "offline scene asset missing: {}",
++                path.display()
++            );
++            path_string(&path)
++        });
++        return SceneAssetPaths {
++            quadcopter: paths[0].clone(),
++            world: paths[1].clone(),
++            skybox: paths[2].clone(),
++            specular_map: paths[3].clone(),
++        };
++    }
+     let cache_root = scene_asset_cache_root();
+     fs::create_dir_all(&asset_root).expect("failed to create scene asset directory");
+ 
+@@ -1329,7 +1366,9 @@ fn setup_copper(mut commands: Commands, zed_store: Res<sim_zed::SimZedFrameStore
+ 
+ #[cfg(all(not(target_arch = "wasm32"), feature = "sim"))]
+ fn sim_log_paths() -> (PathBuf, PathBuf) {
+-    let log_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("logs");
++    let log_dir = std::env::var_os("COPPER_FLIGHT_LOG_DIR")
++        .map(PathBuf::from)
++        .unwrap_or_else(|| Path::new(env!("CARGO_MANIFEST_DIR")).join("logs"));
+     (
+         log_dir.join("flight_controller_sim.copper"),
+         log_dir.join("flight_compute_sim.copper"),
+@@ -1748,9 +1787,17 @@ fn setup_world(
+         affects_lightmapped_meshes: true,
+     });
+ 
+-    let split_target = if layout.split_monitor {
++    let split_target = if layout.split_monitor || native_offscreen() {
+         let mut image = Image::new_uninit(
+-            default(),
++            if native_offscreen() {
++                Extent3d {
++                    width: 800,
++                    height: 600,
++                    depth_or_array_layers: 1,
++                }
++            } else {
++                default()
++            },
+             TextureDimension::D2,
+             TextureFormat::Bgra8UnormSrgb,
+             RenderAssetUsages::all(),
+@@ -1790,15 +1837,21 @@ fn setup_world(
+         },
+         SimSceneCamera,
+     ));
+-    if layout.split_monitor {
++    if layout.split_monitor || native_offscreen() {
+         camera.insert((
+             Camera {
+                 order: 0,
+                 ..default()
+             },
+-            RenderTarget::Image(split_target.expect("split viewport target missing").into()),
+-            SplitSceneCamera,
++            RenderTarget::Image(
++                split_target
++                    .expect("offscreen viewport target missing")
++                    .into(),
++            ),
+         ));
++    }
++    if layout.split_monitor {
++        camera.insert(SplitSceneCamera);
+     } else {
+         camera.insert(IsDefaultUiCamera);
+     }
+@@ -3128,6 +3181,7 @@ fn asset_plugin() -> AssetPlugin {
+     #[cfg(not(all(feature = "bevymon", target_arch = "wasm32")))]
+     {
+         AssetPlugin {
++            file_path: path_string(&scene_asset_root()),
+             unapproved_path_mode: UnapprovedPathMode::Allow,
+             ..default()
+         }
+@@ -3250,6 +3304,17 @@ fn sync_loading_overlay(
+     }
+ }
+ 
++fn native_offscreen() -> bool {
++    #[cfg(feature = "sim")]
++    {
++        native_contract::offscreen_mode(std::env::var("FLIGHT_DISPLAY_MODE").ok().as_deref())
++    }
++    #[cfg(not(feature = "sim"))]
++    {
++        false
++    }
++}
++
+ pub fn build_world(headless: bool, split_monitor: bool) -> App {
+     build_world_with_assets(
+         headless,
+@@ -3291,14 +3356,22 @@ fn build_world_with_assets(
+         return app;
+     }
+ 
+-    app.add_plugins(
+-        DefaultPlugins
+-            .set(WindowPlugin {
+-                primary_window: Some(primary_window(split_monitor)),
+-                ..default()
+-            })
+-            .set(asset_plugin()),
+-    );
++    let offscreen = native_offscreen();
++    let plugins = DefaultPlugins
++        .set(WindowPlugin {
++            primary_window: (!offscreen).then(|| primary_window(split_monitor)),
++            exit_condition: bevy::window::ExitCondition::DontExit,
++            ..default()
++        })
++        .set(asset_plugin());
++    if offscreen {
++        app.add_plugins(plugins.disable::<bevy::winit::WinitPlugin>());
++        app.add_plugins(bevy::app::ScheduleRunnerPlugin::run_loop(
++            std::time::Duration::from_millis(16),
++        ));
++    } else {
++        app.add_plugins(plugins);
++    }
+     app.add_plugins(ExtractResourcePlugin::<ZedDepthTexture>::default());
+     app.get_sub_app_mut(RenderApp)
+         .expect("render app should be present")
+@@ -3366,6 +3439,8 @@ pub fn run_sim() {
+     let mut app = build_world_with_assets(false, false, Some(scene_assets), zed_store);
+     #[cfg(not(target_arch = "wasm32"))]
+     {
++        app.insert_resource(native_status::NativeStatus::from_env());
++        app.add_systems(Update, native_status::export_status);
+         app.add_systems(Startup, setup_copper);
+         app.add_systems(
+             FixedUpdate,

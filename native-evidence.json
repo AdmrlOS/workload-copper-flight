@@ -1,0 +1,364 @@
+{
+  "schema_version": 1,
+  "upstream_revision": "d46ef87a65c7ba93bcad3c236da99e52cd77f319",
+  "native_graph": "Original MCU + compute Copper graph, real cu-vitfly; no bevymon/Noop substitute",
+  "cpu_native_execution_verified": true,
+  "cpu_surface_free_execution_verified": true,
+  "cuda_compilation_verified": true,
+  "cuda_execution_verified": false,
+  "nvidia_graphics_execution_verified": false,
+  "replay_computation_verified": false,
+  "model_asset_redistribution_rights_verified": false,
+  "images": [
+    {
+      "tags": [
+        "workload-copper-flight:native-cpu-offscreen"
+      ],
+      "id": "sha256:689ddbe3caff4ae9e45a569d1e2a7f409cc202455f0869d6ddac0dada862f3c5",
+      "architecture": "arm64",
+      "bytes": 1545790245
+    },
+    {
+      "tags": [
+        "workload-copper-flight:native-cuda-offscreen"
+      ],
+      "id": "sha256:d118b0ec498ed36b03704ee242f67eadf5a82fe7488d0c0910f53d7641d2b397",
+      "architecture": "arm64",
+      "bytes": 2165764625
+    },
+    {
+      "tags": [
+        "workload-copper-flight:development-offscreen"
+      ],
+      "id": "sha256:7d135a1c715d6df5d2c575f21a8c1df1da9c6f29e7c50ec0c3bb17be07fc0323",
+      "architecture": "arm64",
+      "bytes": 2169356854
+    }
+  ],
+  "containers": [
+    {
+      "name": "copper-flight-native-cpu-final",
+      "id": "b41231e4777d91a09d3e5b87b3b88a5950f7c4cdd755d5b9389fdf81b419465e",
+      "image": "sha256:97c3b249ba8180c86542b0c84b361cab5d67e7ab5fbdee1910d9bf9d4dd83555",
+      "exit_code": 0,
+      "started_at": "2026-10-27T03:07:29.80382134Z",
+      "finished_at": "2026-10-27T03:08:06.588128927Z",
+      "wall_seconds": 36.784307,
+      "network_mode": "none",
+      "path": "xvfb-run",
+      "args": [
+        "-a",
+        "-s",
+        "-screen 0 800x600x24 -fbdir /data",
+        "/opt/copper-flight/bin/quad-sim"
+      ]
+    },
+    {
+      "name": "copper-flight-native-offscreen-proof",
+      "id": "0d5e23aa762b1b05c00b2e3a7293d2763e51131845d6b2bf5fd119a0de00e8c9",
+      "image": "sha256:689ddbe3caff4ae9e45a569d1e2a7f409cc202455f0869d6ddac0dada862f3c5",
+      "exit_code": 0,
+      "started_at": "2026-10-27T03:19:45.454286625Z",
+      "finished_at": "2026-10-27T03:20:24.689614129Z",
+      "wall_seconds": 39.235328,
+      "network_mode": "none",
+      "path": "/opt/copper-flight/bin/quad-sim",
+      "args": []
+    },
+    {
+      "name": "copper-flight-native-build",
+      "id": "cf8dd5d043cd8ef28cf3edb322eb3374af770ba3c081454f629c03b2f56fec61",
+      "image": "sha256:7352936f86873fd6e3758dbbe8577f8088c39ac43c89dd5ea796934219a49cc0",
+      "exit_code": 0,
+      "started_at": "2026-10-27T02:37:03.377640467Z",
+      "finished_at": "2026-10-27T02:45:38.535689178Z",
+      "wall_seconds": 515.158049,
+      "network_mode": "bridge",
+      "path": "bash",
+      "args": [
+        "-c",
+        "date; rustc --version; cargo build --release --no-default-features -p cu-flight-controller --features sim,forest-world,autonomous-demo --bin quad-sim; result=$?; date; exit $result"
+      ]
+    },
+    {
+      "name": "copper-flight-cuda-build",
+      "id": "075795d6623f192d1e5fd19b5875e4d78d2120cb1a0d485194c772fb9269b65c",
+      "image": "sha256:d9a1ea877f323cdc2721186cda8710dcc4ab7adbb8a749ef1737e1e3d4e9ed24",
+      "exit_code": 0,
+      "started_at": "2026-10-27T02:49:06.539312968Z",
+      "finished_at": "2026-10-27T02:51:02.71167905Z",
+      "wall_seconds": 116.172367,
+      "network_mode": "bridge",
+      "path": "bash",
+      "args": [
+        "-c",
+        "date; nvcc --version; cargo build --locked --release --no-default-features -p cu-flight-controller --features vitfly-cuda,forest-world,autonomous-demo --bin quad-sim; result=$?; date; exit $result"
+      ]
+    },
+    {
+      "name": "copper-flight-offscreen-build",
+      "id": "a7333c933a34b526393f09d454eda00d25f3f473609d8b0105ac2b2c75da98dd",
+      "image": "sha256:d9a1ea877f323cdc2721186cda8710dcc4ab7adbb8a749ef1737e1e3d4e9ed24",
+      "exit_code": 0,
+      "started_at": "2026-10-27T03:17:14.950817333Z",
+      "finished_at": "2026-10-27T03:18:09.235776136Z",
+      "wall_seconds": 54.284959,
+      "network_mode": "bridge",
+      "path": "bash",
+      "args": [
+        "-c",
+        "set -eu; date; cargo build --locked --release --no-default-features -p cu-flight-controller --features sim,forest-world,autonomous-demo --bin quad-sim; cp /target/release/quad-sim /artifacts/quad-sim; date; cargo build --locked --release --no-default-features -p cu-flight-controller --features vitfly-cuda,forest-world,autonomous-demo --bin quad-sim; cp /target/release/quad-sim /artifacts/quad-sim-cuda; date; sha256sum /artifacts/quad-sim*"
+      ]
+    },
+    {
+      "name": "copper-flight-native-graph-tests",
+      "id": "fd77626744374f38ea76a1ffeabfea245dbc781bb8837155694afa9c8d0157c8",
+      "image": "sha256:7352936f86873fd6e3758dbbe8577f8088c39ac43c89dd5ea796934219a49cc0",
+      "exit_code": 0,
+      "started_at": "2026-10-27T02:57:54.414416171Z",
+      "finished_at": "2026-10-27T03:02:56.057882963Z",
+      "wall_seconds": 301.643466,
+      "network_mode": "bridge",
+      "path": "bash",
+      "args": [
+        "-c",
+        "date; cargo test --locked --release --no-default-features -p cu-flight-controller --features sim,forest-world,autonomous-demo --bin quad-sim vitfly_is_rate_limited_and_infers_between_context_packets -- --nocapture; result=$?; date; exit $result"
+      ]
+    }
+  ],
+  "facts": {
+    "host_free_bytes": 12082360320,
+    "input_hashes": {
+      "Cargo.lock": {
+        "bytes": 474666,
+        "sha256": "43f50ed91e68368e0d997ba232854d80ce42c43f49f7c90e55182b1cef41b5af"
+      },
+      "native-source.lock.json": {
+        "bytes": 1302,
+        "sha256": "5aee80614e06afae5a8d1bcb75592755bfc8503f3f21af948deb711e32cd970a"
+      },
+      "native-assets.lock.json": {
+        "bytes": 1369,
+        "sha256": "2a899ea17196eb082ad18e30ef781efefef5a2137dd0f8e923f507f535b0a9ce"
+      },
+      "scripts/native_sources.py": {
+        "bytes": 3676,
+        "sha256": "34d7413938f3118b7a96580520a8edc035e87856b6b0b067803edc03e6ba3f35"
+      },
+      "tests/test_sources.py": {
+        "bytes": 9151,
+        "sha256": "c39ba68407d900ccdf0a2414d73c0c04b8ad29ec65be38931f531c0bc3dd183c"
+      },
+      "patches/0001-native-offline-telemetry.patch": {
+        "bytes": 9413,
+        "sha256": "ec1dc973779931e541fe7bfcea09b96b8bc32bccadcc29751e227b6a8c3f2347"
+      },
+      "patches/native_contract.rs": {
+        "bytes": 3039,
+        "sha256": "9b02f618aaca8985fbdc86d3e45cbdef9e1ae166f76c7a3c55afd855623ca912"
+      },
+      "patches/native_status.rs": {
+        "bytes": 2686,
+        "sha256": "001e5ce11c918f281cd06785db3ab6a527977702d94908fee53443df07f9264e"
+      },
+      "vendor-assets/native/quad-sim": {
+        "bytes": 125084144,
+        "sha256": "d7fab01265d4f81b6840f506a4e17d222e40fa348e5e13b059046faf737004e5"
+      },
+      "vendor-assets/native/quad-sim-cuda": {
+        "bytes": 166606208,
+        "sha256": "5a01fb84bbb410f70d91dff456b93e5bfbb5cc508c3fcbb911e6e9634eaa9c29"
+      },
+      "vendor-assets/offscreen/quad-sim": {
+        "bytes": 125091240,
+        "sha256": "0ded03ed06a195daa57bd2258275d0884438e88fa18d8fea0a3114897af2e3d3"
+      },
+      "vendor-assets/offscreen/quad-sim-cuda": {
+        "bytes": 166610472,
+        "sha256": "347a434163cf1681b97b28b59c0fc997a46999b580939ba303e4154ca3b623e5"
+      },
+      "Dockerfile": {
+        "bytes": 6916,
+        "sha256": "82a711310653969a6c368761363803aba266965938b5e3460d28f06b7e25c6fb"
+      },
+      "native-contract.md": {
+        "bytes": 5815,
+        "sha256": "72758b1c443881051d0a9a4fcb601d77548fa62332320206381f2f75e1313f5c"
+      },
+      "native-evidence.md": {
+        "bytes": 8238,
+        "sha256": "0d6e001447e69941c625eddb46b0b18e350efe131e4ba3fe1862d13b188aacf4"
+      }
+    },
+    "proofs": {
+      "cpu-final": {
+        "telemetry": "artifacts/native/cpu-final/telemetry.jsonl",
+        "telemetry_sha256": "9e608ed2ad6220ef78ec0b44ba963cda533bac255dcc45b129c3f911ee7d356f",
+        "rows": 51,
+        "policy_rows": 48,
+        "first": {
+          "schema_version": 1,
+          "seq": 0,
+          "sim_time_s": 0,
+          "position_m": null,
+          "rotation": null,
+          "velocity_m_s": null,
+          "armed": false,
+          "auto_enabled": false,
+          "mode": "Acro",
+          "world": "forest",
+          "policy_prediction_m_s": null,
+          "policy_observation_seq": 0,
+          "inference_backend": "cpu",
+          "inference_count": null,
+          "graphics_backend": "Vulkan",
+          "graphics_adapter": "llvmpipe (LLVM 21.1.8, 128 bits)"
+        },
+        "last": {
+          "schema_version": 1,
+          "seq": 50,
+          "sim_time_s": 12.125,
+          "position_m": {
+            "x": -10.369372,
+            "y": 7.0622406,
+            "z": -44.079235
+          },
+          "rotation": {
+            "x": -0.058875438,
+            "y": 0.06405993,
+            "z": 0.023056518,
+            "w": 0.9959409
+          },
+          "velocity_m_s": {
+            "x": -0.5194164,
+            "y": -0.07314341,
+            "z": -9.217352
+          },
+          "armed": true,
+          "auto_enabled": true,
+          "mode": "Angle",
+          "world": "forest",
+          "policy_prediction_m_s": {
+            "x": 11.995026,
+            "y": -0.08752989,
+            "z": 0.33420333
+          },
+          "policy_observation_seq": 571,
+          "inference_backend": "cpu",
+          "inference_count": null,
+          "graphics_backend": "Vulkan",
+          "graphics_adapter": "llvmpipe (LLVM 21.1.8, 128 bits)"
+        },
+        "slab_count": 9,
+        "slab_logical_bytes": 1207959552,
+        "slab_allocated_bytes": 978042880
+      },
+      "cpu-offscreen-surfacefree": {
+        "telemetry": "artifacts/native/cpu-offscreen-surfacefree/telemetry.jsonl",
+        "telemetry_sha256": "ed9a75d661c42717a627b62ab12620b3030d54fc7238e2e5274d2ecd53485b24",
+        "rows": 51,
+        "policy_rows": 48,
+        "first": {
+          "schema_version": 1,
+          "seq": 0,
+          "sim_time_s": 0,
+          "position_m": null,
+          "rotation": null,
+          "velocity_m_s": null,
+          "armed": false,
+          "auto_enabled": false,
+          "mode": "Acro",
+          "world": "forest",
+          "policy_prediction_m_s": null,
+          "policy_observation_seq": 0,
+          "inference_backend": "cpu",
+          "inference_count": null,
+          "graphics_backend": "Vulkan",
+          "graphics_adapter": "llvmpipe (LLVM 21.1.8, 128 bits)"
+        },
+        "last": {
+          "schema_version": 1,
+          "seq": 50,
+          "sim_time_s": 12.1875,
+          "position_m": {
+            "x": -11.184832,
+            "y": 7.2351475,
+            "z": -43.098755
+          },
+          "rotation": {
+            "x": -0.09675093,
+            "y": -0.023658596,
+            "z": -0.17182519,
+            "w": 0.9800795
+          },
+          "velocity_m_s": {
+            "x": 0.5908696,
+            "y": 0.124230444,
+            "z": -9.934325
+          },
+          "armed": true,
+          "auto_enabled": true,
+          "mode": "Angle",
+          "world": "forest",
+          "policy_prediction_m_s": {
+            "x": 11.943033,
+            "y": -0.9102783,
+            "z": 0.7316646
+          },
+          "policy_observation_seq": 568,
+          "inference_backend": "cpu",
+          "inference_count": null,
+          "graphics_backend": "Vulkan",
+          "graphics_adapter": "llvmpipe (LLVM 21.1.8, 128 bits)"
+        },
+        "slab_count": 9,
+        "slab_logical_bytes": 1207959552,
+        "slab_allocated_bytes": 969768960,
+        "execution_environment": {
+          "FLIGHT_DISPLAY_MODE": "headless",
+          "WGPU_BACKEND": "vulkan",
+          "WGPU_SETTINGS_PRIO": "webgpu",
+          "DISPLAY": null,
+          "WAYLAND_DISPLAY": null,
+          "compositor_or_xvfb": false
+        }
+      }
+    },
+    "verified_asset_count": 6,
+    "linear_45_second_projection_GiB": 4.21875,
+    "host_free_bytes_final": 17829400576
+  },
+  "tests": {
+    "helper_suite": "RUN_NATIVE_RUST_TESTS=1 python3 -m unittest discover -s tests -p test_sources.py -v",
+    "helper_tests_passed": 8,
+    "upstream_test": "vitfly_is_rate_limited_and_infers_between_context_packets",
+    "upstream_test_passed": true,
+    "full_just_fmt": "Unavailable: just absent; changed Rust files formatted with pinned toolchain rustfmt"
+  },
+  "cuda_ptx_evidence": "artifacts/native/cuda-ptx.json: 11 generated PTX files, all .target sm_87",
+  "resources": {
+    "volumes": [
+      "copper-flight-native-target",
+      "copper-flight-native-registry"
+    ],
+    "unrelated_resources_pruned": false,
+    "cargo_target_du": "5.3 GiB",
+    "cargo_registry_du": "772 MiB",
+    "native_evidence_allocated_GiB": 2.728729248046875
+  },
+  "remaining": [
+    "Parent must integrate matched NVIDIA graphics payload from graphics/; CUDA runtime forces NVIDIA ICD selection but does not contain that payload.",
+    "Parent supervisor must bypass Weston for FLIGHT_DISPLAY_MODE=headless/software; native binary is genuinely surface-free.",
+    "CUDA inference and NVIDIA Vulkan/native depth execution require actual target acceptance.",
+    "CUDA-enabled executable has DT_NEEDED libcuda.so.1 even when CPU inference is requested; use CPU-only image for hosts without injected driver.",
+    "Exact inference_count remains null; policy_observation_seq counts upstream preview publications, not exact inference calls.",
+    "45s logging not exercised: 12s uses nine 128MiB slabs; simple linear projection 4.21875GiB. Do not claim it fits 4GiB."
+  ],
+  "encountered_failures": [
+    "Initial bash -lc builder reset PATH: rustc/cargo missing, exit 127. Recovered using bash -c; cold CPU compile 8m34s.",
+    "xvfb-run as PID1 stalled before native process; --init recovered readiness.",
+    "Missing libxkbcommon-x11.so caused panic; runtime includes libxkbcommon-x11-0 now.",
+    "Bevy default maximum-feature creation failed on llvmpipe; explicit WGPU_SETTINGS_PRIO=webgpu succeeded.",
+    "Docker COPY glob dereferenced CUDA soname links; final cp -a staging preserves links and reduces runtime image size."
+  ]
+}

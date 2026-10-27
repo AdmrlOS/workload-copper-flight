@@ -1,0 +1,30 @@
+{
+  "library": "three@0.182.0",
+  "static_routes": [
+    "/index.html",
+    "/styles.css",
+    "/app.js",
+    "/monitor.js",
+    "/state.js",
+    "/transport.js",
+    "/format.js",
+    "/pose.js",
+    "/viewer.js",
+    "/assets/Archivo.woff2",
+    "/assets/IBMPlexMono-Regular.woff2",
+    "/assets/IBMPlexMono-Medium.woff2",
+    "/assets/admiral-logo-light.svg",
+    "/assets/admiral-icon.svg",
+    "/assets/paper-tile.png",
+    "/assets/dark-texture-tile.png",
+    "/vendor/three-r182/build/three.module.js",
+    "/vendor/three-r182/build/three.core.js",
+    "/vendor/three-r182/examples/jsm/loaders/GLTFLoader.js",
+    "/vendor/three-r182/examples/jsm/controls/OrbitControls.js",
+    "/vendor/three-r182/examples/jsm/utils/BufferGeometryUtils.js"
+  ],
+  "scene_routes": [
+    "/api/scene/forest.glb",
+    "/api/scene/quadcopter.glb"
+  ]
+}
