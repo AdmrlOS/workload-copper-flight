@@ -1,0 +1,87 @@
+{
+  "status": "NOT customer-release approved; guided development preview only",
+  "source_revision": "add80e2634fb7f92b1827b9be9ca8c1d50f5d82a",
+  "image": "ghcr.io/admrlos/workload-copper-flight@sha256:b2c688e35ffb06e7cbd0c1af3374eed8b0b0a30061f64f4786ae7bf6f23f5c5e",
+  "native_cuda_sha256": "542d0b163e9fe127af26ce5ecdb89e91d3102db7c634fc1c12f21e543f9f4624",
+  "visibility": "private",
+  "anonymous_manifest_status": 401,
+  "hardware_acceptance_passed": true,
+  "graphics": {
+    "backend": "Vulkan",
+    "adapter_name": "NVIDIA Tegra Orin (nvgpu)",
+    "vendor_id": 4318,
+    "device_type": "IntegratedGpu"
+  },
+  "inference_backend": "cuda",
+  "readiness": {
+    "passed": false,
+    "failed_gates": [
+      "simulation_realtime_factor",
+      "error_free_http_observation",
+      "terminal_fresh_native_observation",
+      "sustained_healthy_hardware_policy_observation",
+      "sustained_same_episode_hardware_policy_progress"
+    ],
+    "scope": "single-device native telemetry; not browser pacing or fleet scale",
+    "episodes": 3,
+    "actual_unique_samples": 4898,
+    "native_wall_span_s": 82.82443453100012,
+    "simulation_span_s": 76.484375,
+    "simulation_realtime_factor": 0.9234518223166726,
+    "observed_source_hz": 59.10091662826704,
+    "source_gap_pairs": 0,
+    "invalid_frames": 0,
+    "observed_depth_sequences": 154,
+    "distinct_depth_rasters": 143,
+    "required_min_sim_rate": 1.0,
+    "required_min_source_hz": 30,
+    "native_replay_verified": false,
+    "revision": "add80e2634fb7f92b1827b9be9ca8c1d50f5d82a",
+    "observed_wall_s": 90.11316391598666,
+    "healthy_wall_s": 0,
+    "episode_healthy_wall_s": {},
+    "episode_healthy_progress_window_s": {},
+    "required_same_episode_progress_s": 5.0,
+    "hardware_observations": 2,
+    "hardware_episodes": 1,
+    "validation_error_count": 203,
+    "distinct_validation_errors": [
+      "native arming/episode transition deadline exceeded"
+    ]
+  },
+  "observed_archive_initial_to_auto_wall_s": 6.0687336,
+  "checker_arming_deadline_s": 6.0,
+  "browser": {
+    "live_and_recorded": true,
+    "revision": "add80e2634fb7f92b1827b9be9ca8c1d50f5d82a",
+    "desktop_and_mobile_no_overflow": true,
+    "console_errors": [],
+    "camera_controls_passed": true
+  },
+  "archive": {
+    "passed": true,
+    "download_bytes": 349567,
+    "archive_sha256": "aadeeb8d262a178e5cfba28a94e6759610e1c0a75104005f9b93bdcac0ca1efe",
+    "telemetry_rows": 2889,
+    "final_sim_time_s": 45.140625,
+    "changing_depth_rasters": 89,
+    "native_replay_verified": false,
+    "archive_entries_confined": true
+  },
+  "portable_tests": {
+    "full_python_total": 125,
+    "full_python_skips": 13,
+    "clean_export_python_total": 120,
+    "clean_export_python_skips": 10,
+    "node_passes": 50
+  },
+  "ci": "GitHub jobs did not start: account payment/spending-limit annotations; local tests are separate",
+  "remaining": [
+    "native realtime factor below strict1.0 threshold",
+    "checker startup deadline rejected observed normal arming; align policy and reverify before release",
+    "customer GitHub/GHCR/scoped Admiral access must be owner-approved",
+    "scene/model/vendor redistribution approval",
+    "GitHub Actions billing resolution",
+    "no fleet scale/deployment-time-saving benchmark or native flight replay"
+  ]
+}

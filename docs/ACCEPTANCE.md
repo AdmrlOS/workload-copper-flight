@@ -16,14 +16,14 @@ Do not call a new source revision customer-ready merely because a prior image bo
 
 ## Reproduce hardware and sustained checks
 
-Connect the authenticated named `web` service as described in [the customer guide](CUSTOMER_GUIDE.md), then:
+Set `RELEASE_REVISION` to the exact 40-character runtime source revision from the delivered image/evidence, not a newer documentation-only checkout commit. Connect the authenticated named `web` service as described in [the customer guide](CUSTOMER_GUIDE.md), then:
 
 ```sh
 python3 tests/check_image.py --url http://127.0.0.1:18083 --backend cuda \
-  --expected-revision "$(git rev-parse HEAD)" --observe-seconds 5 --timeout 180 \
+  --expected-revision "$RELEASE_REVISION" --observe-seconds 5 --timeout 180 \
   --report artifacts/customer-hardware.json
 python3 scripts/check_customer_readiness.py --url http://127.0.0.1:18083 \
-  --expected-revision "$(git rev-parse HEAD)" --seconds 90 \
+  --expected-revision "$RELEASE_REVISION" --seconds 90 \
   --report artifacts/customer-readiness.json
 ```
 

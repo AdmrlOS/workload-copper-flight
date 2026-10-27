@@ -13,7 +13,7 @@ A native edge-autonomy demonstration with a browser mission monitor. Copper runs
 3. [Native telemetry contract](native-contract.md): units, clocks, recording modes and evidence semantics.
 4. [Third-party notices](THIRD_PARTY_NOTICES.md): source provenance and unresolved asset/model distribution permissions.
 
-**Release status:** a private development candidate now has verified Jetson CUDA/NVIDIA execution, depth/UI checks and a 90-second measurement. It achieved **0.9193× real time and 58.84 genuine source samples/s**, so the strict ≥1.0× realtime release gate remains **FAILED**. See [tested candidate identity and evidence](CUSTOMER_RELEASE.md); it is not a passed final release. Native flight replay/recomputation is **NOT IMPLEMENTED**; recorded browser playback must not be presented as replay verification.
+**Release status:** the reviewed private evaluation image has verified Jetson CUDA/NVIDIA execution, depth/UI checks and a 90-second measurement. It achieved **0.92345× real time and 59.10 genuine source samples/s**, so the strict ≥1.0× realtime gate remains **FAILED**. The checker's six-second arming deadline also rejected observed episode startup and requires alignment/re-verification. See [exact tested source/image identity and all failed gates](CUSTOMER_RELEASE.md); this is **not a passed customer release**. Native flight replay/recomputation is **NOT IMPLEMENTED**; recorded browser playback must not be presented as replay verification.
 
 ## Tests without GPU or proprietary model assets
 

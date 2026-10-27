@@ -1,8 +1,19 @@
 # Customer evaluation evidence — October 27, 2026
 
-## Status: evaluation preview, not a passed realtime release
+## Latest tested committed preview — NOT release-approved
 
-The approved development Jetson is running the private, immutable candidate below. It demonstrates native Copper flight graphs, CUDA policy execution, native NVIDIA Vulkan simulated depth, browser observability, completed telemetry visualization and authenticated off-network access. **The strict ≥1.0× realtime release target is not met.** Do not present this preview as a production qualification, physical-drone test, native flight replay or fleet-scale benchmark.
+- **Runtime source:** `add80e2634fb7f92b1827b9be9ca8c1d50f5d82a` (subsequent documentation-only commits do not change the deployed runtime).
+- **Private ARM64 image:** `ghcr.io/admrlos/workload-copper-flight@sha256:b2c688e35ffb06e7cbd0c1af3374eed8b0b0a30061f64f4786ae7bf6f23f5c5e`.
+- **Passed on that exact image:** positive CUDA policy/native physics progress, NVIDIA Vulkan identity, actual changing depth, desktop/mobile Live and Recorded UI, camera controls, no captured console errors/overflow, and a downloadable completed 45.141-simulated-second mission (2,889 native rows, 89 distinct preview rasters).
+- **Failed release gate:** 90.113 seconds of observation produced **0.92345× native real time / 59.10 genuine source samples per native wall second**, with zero source gaps/invalid frames. The unchanged strict 1.0× target was not met.
+- **Additional readiness failure:** the checker's six-second arming budget rejected normal episode startup; a downloaded mission first observed armed AUTO at 6.069 wall seconds after its first native sample. The checker retained those failures for the episode, producing 203 validation errors and failed terminal/healthy-coverage gates. This is not a reported CUDA crash or transport error. Align and re-verify the checker/lifecycle policy before relying on a release pass; do not suppress the failures or lower the realtime target.
+- **Source checks:** independently reviewed fixes; 125 Python tests (13 opt-in skips) and 50 browser tests successful. Fresh source export: 120 portable Python tests (10 skips), 50 browser tests successful. GitHub-hosted jobs did not start because of account billing/spending-limit annotations.
+
+[Machine-readable latest evidence](docs/evidence/customer-reviewed-2026-10-27.json) records the failed gates. The earlier candidate evidence below is retained as history, not substituted for this image's results. **External delivery still requires approved customer access and model/scene/vendor distribution rights.** No fleet-scale speedup or native flight replay is established.
+
+## Earlier development candidate — not a passed realtime release
+
+The approved development Jetson previously ran the private, immutable candidate below. It demonstrated native Copper flight graphs, CUDA policy execution, native NVIDIA Vulkan simulated depth, browser observability, completed telemetry visualization and authenticated off-network access. **The strict ≥1.0× realtime release target is not met.** Do not present this preview as a production qualification, physical-drone test, native flight replay or fleet-scale benchmark.
 
 ## Tested candidate identity
 
