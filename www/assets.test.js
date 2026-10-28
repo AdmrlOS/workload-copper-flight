@@ -33,9 +33,14 @@ test('ships an explicit offline browser dependency inventory for the backend all
   }
   const html = read('index.html');
   assert.ok(manifest.static_routes.includes('/depth.js'), 'Ship the bounded depth module');
-  assert.match(html, /id="depth-canvas"[^>]*width="32"[^>]*height="24"/, 'Depth canvas is fixed and bounded');
+  assert.match(html, /id="depth-canvas"[^>]*width="320"[^>]*height="240"/, 'Full source canvas is 320x240, not a CSS-upscaled thumbnail');
   assert.match(read('app.js'), /renderDepth\(view,\s*latest\)/, 'Render depth on every inspector refresh');
   assert.match(read('app.js'), /depthPresentation\(/, 'Wire source age and modes into inspector');
+  assert.match(read('app.js'), /createDepthLoader\(/);
+  assert.match(read('app.js'), /setInterval\(pollDepth,\s*200\)/, 'Depth network uses wall timer, not requestAnimationFrame');
+  assert.match(read('app.js'), /paintDepth\(/);
+  assert.match(read('app.js'), /Legacy 32×24/);
+  assert.equal(/filter\s*:\s*blur/i.test(read('styles.css')), false);
   assert.match(html, /Simulated sensor depth/);
   assert.equal(/<script(?![^>]*\bsrc\s*=)/i.test(html), false, 'No inline scripts or import maps');
   assert.equal(/\son\w+\s*=/i.test(html), false, 'No inline handlers');

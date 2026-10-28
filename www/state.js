@@ -1,4 +1,4 @@
-import { parseDepthPreview } from './depth.js';
+import { parseDepthPreview, parseDepthDescriptor } from './depth.js';
 
 // All normalization is conservative: absent or invalid observations stay null.
 const object = (value) => value !== null && typeof value === 'object' && !Array.isArray(value) ? value : {};
@@ -50,6 +50,7 @@ export function parseFrame(input) {
     inference_count: integer(f.inference_count),
     graphics: { backend: text(graphics.backend), adapter_name: text(graphics.adapter_name) },
     ...(Object.hasOwn(f, 'depth_preview') ? { depth_preview: parseDepthPreview(f.depth_preview, f) } : {}),
+    ...(Object.hasOwn(f, 'depth_raster') ? { depth_raster: parseDepthDescriptor(f.depth_raster, f) } : {}),
     ...(f.copper && typeof f.copper === 'object' && !Array.isArray(f.copper) ? { copper: parseCopper(f.copper) } : {}),
   };
 }

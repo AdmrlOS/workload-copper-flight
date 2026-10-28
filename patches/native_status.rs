@@ -12,6 +12,7 @@ pub(super) struct NativeStatus {
     last_depth_check: Option<std::time::Instant>,
     depth_source_seq: Option<u64>,
     depth_preview: Option<String>,
+    depth_raster: Option<String>,
 }
 
 impl NativeStatus {
@@ -26,6 +27,7 @@ impl NativeStatus {
             last_depth_check: None,
             depth_source_seq: None,
             depth_preview: None,
+            depth_raster: None,
             log_mode: native_contract::native_log_mode(std::env::var("FLIGHT_NATIVE_LOG_MODE").ok().as_deref())
                 .expect("invalid native recording mode"),
         }
@@ -76,30 +78,54 @@ pub(super) fn export_status(
     row.pop(); // Extend the unchanged v1 fields with optional genuine Copper diagnostics.
     use std::fmt::Write as _;
     let wall_time_s = status.started.elapsed().as_secs_f64();
+    let mut depth_event = None;
     if status.last_depth_check.is_none_or(|last| last.elapsed() >= std::time::Duration::from_millis(500)) {
         status.last_depth_check = Some(std::time::Instant::now());
         match store.observed_depth() {
             Some((seq, handle)) if status.depth_source_seq != Some(seq) => {
-                status.depth_preview = handle.with_inner(|inner| native_contract::depth_preview_json(
-                    inner.as_ref(), sim_zed::ZED_SIM_WIDTH as usize, sim_zed::ZED_SIM_HEIGHT as usize,
-                    seq, physics_time.elapsed_secs_f64(), wall_time_s,
-                ));
+                // Both exports observe the same existing completed CPU readback.
+                // Never request another GPU readback or retain full data in poses.
+                let (preview, raster) = handle.with_inner(|inner| {
+                    let mm = inner.as_ref();
+                    let width = sim_zed::ZED_SIM_WIDTH as usize;
+                    let height = sim_zed::ZED_SIM_HEIGHT as usize;
+                    let sim_time_s = physics_time.elapsed_secs_f64();
+                    (native_contract::depth_preview_json(mm, width, height, seq, sim_time_s, wall_time_s),
+                     native_contract::depth_raster_json(mm, width, height, seq, sim_time_s, wall_time_s))
+                });
+                status.depth_preview = preview;
+                status.depth_raster = raster.map(|(metadata, full)| {
+                    depth_event = Some(full);
+                    metadata
+                });
                 status.depth_source_seq = Some(seq);
             }
-            None => { status.depth_preview = None; status.depth_source_seq = None; }
+            None => {
+                status.depth_preview = None;
+                status.depth_raster = None;
+                status.depth_source_seq = None;
+            }
             _ => {}
         }
     }
     if let Some(preview) = status.depth_preview.as_ref() {
         write!(row, ",\"depth_preview\":{preview}").expect("format cached observed depth");
     }
+    if let Some(metadata) = status.depth_raster.as_ref() {
+        write!(row, ",\"depth_raster\":{metadata}").expect("format cached depth raster metadata");
+    }
     write!(row, ",\"wall_time_s\":{wall_time_s},\"copper\":{{\"recording_mode\":\"{}\",\"full_recording\":{},\"mcu_iteration_wall_us\":{},\"compute_iteration_wall_us\":{},\"export_wall_s\":{wall_time_s}}}}}",
         status.log_mode.as_str(), status.log_mode == native_contract::NativeLogMode::Full,
         copper.mcu_iteration_wall_us, copper.compute_iteration_wall_us)
         .expect("format native diagnostics");
     let file = status.file.as_mut().expect("status file exists");
-    // File is unbuffered; one syscall publishes a complete JSONL row. flush() on File
-    // is a no-op, not durability. We intentionally do not fsync the control loop.
+    // Publish each full raster once, before its referencing pose, without using
+    // a pose sequence number. File is unbuffered; flush() is not durability.
+    // We intentionally do not fsync the control loop.
+    if let Some(raster) = depth_event {
+        writeln!(file, "{{\"schema_version\":1,\"kind\":\"depth-raster\",\"depth_raster\":{raster}}}")
+            .expect("failed to write native depth raster");
+    }
     writeln!(file, "{row}").expect("failed to write native telemetry");
     status.seq = status.seq.saturating_add(1);
 }

@@ -4,7 +4,7 @@ import { safeDownloadURL } from './state.js';
 import { recordingID } from './mission.js';
 import { createLiveBuffer } from './live.js';
 import { createSession, evidenceLabel, chartPath, captureEvidence } from './presentation.js';
-import { depthPresentation, depthPixels } from './depth.js';
+import { depthPresentation, paintDepth, createDepthLoader } from './depth.js';
 import { number } from './format.js';
 
 const node = id => document.getElementById(id);
@@ -13,6 +13,7 @@ const monitor = createMonitor();
 const buffer = createLiveBuffer();
 const session = createSession(buffer);
 const fetchImpl = globalThis.fetch.bind(globalThis);
+const depthLoader = createDepthLoader(fetchImpl);
 let sourceRoute = '/api/telemetry';
 let legacyUntil = 0;
 let feedPending = false;
@@ -167,31 +168,43 @@ function renderCharts(view) {
 }
 
 let depthImageKey = null;
+function selectDepth(view) {
+  depthLoader.select({ mode: view.mode, epoch: view.mode === 'recorded' ? recordingGeneration : view.key,
+    runID: view.mode === 'recorded' ? session.mission?.recording.id : buffer.source?.episode?.id, frame: view.frame });
+}
+function pollDepth() {
+  if (disposed) return;
+  selectDepth(session.view(performance.now()));
+  void depthLoader.poll();
+}
 function renderDepth(view, latestFrame) {
-  const state = depthPresentation({ ...view, latestFrame });
+  selectDepth(view);
+  const observation = depthLoader.snapshot();
+  const state = depthPresentation({ ...view, latestFrame }, observation);
   node('depth-section').dataset.state = state.kind;
   const preview = state.preview;
   node('depth-content').hidden = !preview;
   node('depth-absence').hidden = Boolean(preview);
-  put('depth-status', { absent: 'Not reported', invalid: 'Rejected / invalid', recorded: 'Recorded / source sample', stale: 'Live / stale sample', live: 'Live / source sample' }[state.kind]);
+  const label = { absent: 'Not reported', loading: 'Loading source raster', invalid: 'Rejected / unavailable', recorded: 'Recorded / source sample', stale: 'Live / stale sample', live: 'Live / source sample' }[state.kind];
+  put('depth-status', state.legacy ? `${label} · Legacy 32×24` : label);
   if (!preview) {
-    put('depth-absence', state.kind === 'invalid' ? 'Malformed depth preview rejected. No pixels displayed.' : 'No completed source depth observation reported.');
-    if (depthImageKey !== null) node('depth-canvas').getContext('2d')?.clearRect(0, 0, 32, 24);
+    put('depth-absence', state.kind === 'loading' ? 'Loading the actual 320×240 source pixels…' : state.kind === 'invalid' ? 'Depth raster unavailable or rejected. No pixels displayed.' : 'No completed source depth observation reported.');
+    const canvas = node('depth-canvas');
+    if (depthImageKey !== null) canvas.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height);
     depthImageKey = null;
     return;
   }
   // The image follows the actual left-hand source frame, never the interpolated pose.
-  const key = JSON.stringify([view.mode, view.key, preview.source_seq, preview.data]);
+  const key = state.legacy ? JSON.stringify([view.mode, view.key, preview.source_seq, preview.data]) : observation.key;
   if (key !== depthImageKey) {
-    const context = node('depth-canvas').getContext('2d');
-    const pixels = depthPixels(preview, view.frame);
-    if (context && pixels) { const image = context.createImageData(32, 24); image.data.set(pixels); context.putImageData(image, 0, 0); }
+    paintDepth(node('depth-canvas'), preview, state.sourceFrame);
     depthImageKey = key;
   }
-  put('depth-seq', `seq ${preview.source_seq} · frame ${view.frame.seq}`);
+  put('depth-seq', `seq ${preview.source_seq} · frame ${state.sourceFrame.seq}`);
   put('depth-age', `${number(state.ageS, 2)} s${view.mode === 'recorded' ? ' at source row' : ' · native wall + receipt age'}`);
-  put('depth-sim-time', `${number(preview.sample_sim_time_s, 3)} s`);
-  put('depth-source-note', `${view.mode === 'recorded' ? 'Recorded' : 'Live'} actual source pixels, never interpolated. ${preview.source}. CPU sampling time is not acquisition time; acquisition timestamp unavailable.`);
+  put('depth-sim-time', `wall ${number(preview.sample_wall_time_s, 3)} s · sim ${number(preview.sample_sim_time_s, 3)} s`);
+  put('depth-resolution', state.legacy ? 'Legacy 32×24 thumbnail (320×240 source)' : '320×240 · full source raster');
+  put('depth-source-note', `${state.legacy ? 'Legacy 32×24 nearest-cell-center thumbnail; not full resolution. ' : '320×240 identity source pixels, never upscaled or interpolated. '}${view.mode === 'recorded' ? 'Recorded' : 'Live'} source seq ${preview.source_seq}. ${preview.source}. CPU sampling time is not acquisition time; acquisition timestamp unavailable.`);
 }
 
 function render(now) {
@@ -266,7 +279,8 @@ render(performance.now());
 void pollState(); void pollFeed();
 const stateInterval = setInterval(pollState, 200);
 const feedInterval = setInterval(pollFeed, 200);
+const depthInterval = setInterval(pollDepth, 200);
 frameRequest = requestAnimationFrame(animate);
 import('./viewer.js').then(({ createViewer }) => createViewer(now => session.view(now))).then(instance => { viewer = instance; }).catch(failure => { put('scene-overlay-title', 'Browser scene unavailable'); put('scene-overlay-detail', 'The local WebGL module could not load. Source telemetry remains available in the Copper inspector.'); console.error('Copper viewer unavailable:', failure); });
-window.addEventListener('pagehide', () => { disposed = true; clearInterval(stateInterval); clearInterval(feedInterval); cancelAnimationFrame(frameRequest); recordingController?.abort(); feedController?.abort(); monitor.dispose(); viewer?.dispose(); }, { once: true });
+window.addEventListener('pagehide', () => { disposed = true; clearInterval(stateInterval); clearInterval(feedInterval); clearInterval(depthInterval); depthLoader.dispose(); cancelAnimationFrame(frameRequest); recordingController?.abort(); feedController?.abort(); monitor.dispose(); viewer?.dispose(); }, { once: true });
 window.addEventListener('pageshow', event => { if (event.persisted) window.location.reload(); });

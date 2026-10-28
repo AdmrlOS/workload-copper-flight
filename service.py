@@ -6,9 +6,11 @@ import json
 import math
 
 MAX_JSON = 65536
+MAX_NATIVE_EVENT = 192 * 1024
+MAX_DEPTH_CACHE = 8
 
 
-def bounded_json(payload):
+def bounded_json(payload, limit=MAX_JSON):
     def pairs(items):
         result = {}
         for key, value in items:
@@ -29,7 +31,7 @@ def bounded_json(payload):
             for child in value:
                 check(child, depth + 1)
 
-    if len(payload) > MAX_JSON:
+    if len(payload) > limit:
         raise ValueError("JSON size limit exceeded")
     try:
         result = json.loads(payload, object_pairs_hook=pairs)
@@ -138,6 +140,8 @@ def validate_frame(payload):
             raise ValueError("invalid graphics device type")
     if "depth_preview" in frame and normalize_depth_preview(frame["depth_preview"], frame) is None:
         raise ValueError("invalid native depth preview")
+    if "depth_raster" in frame and normalize_depth_raster(frame["depth_raster"], frame) is None:
+        raise ValueError("invalid native depth raster descriptor")
     return frame
 
 
@@ -147,11 +151,61 @@ def normalize_frame(frame):
         preview = normalize_depth_preview(native_frame.pop("depth_preview"), native_frame)
         if preview is not None:
             native_frame["depth_preview"] = preview
+    if "depth_raster" in native_frame:
+        raster = normalize_depth_raster(native_frame.pop("depth_raster"), native_frame)
+        if raster is not None:
+            native_frame["depth_raster"] = raster
     graphics = native_frame.setdefault("graphics", {})
     for key, raw_key in (("backend", "graphics_backend"), ("adapter_name", "graphics_adapter"),
                          ("vendor_id", "graphics_vendor_id"), ("device_type", "graphics_device_type")):
         graphics.setdefault(key, native_frame.get(raw_key))
     return native_frame
+
+
+RASTER_CONSTANTS = dict(DEPTH_CONSTANTS, width=320, height=240, sampling="identity")
+
+
+def normalize_depth_raster(value, frame=None, full=False):
+    """Validate fixed source metadata before allocating or publishing pixels."""
+    if not isinstance(value, dict) or any(
+            type(value.get(key)) is not type(expected) or value[key] != expected
+            for key, expected in RASTER_CONSTANTS.items()):
+        return None
+    seq = value.get("source_seq")
+    if type(seq) is not int or not 0 <= seq <= 2**53 - 1:
+        return None
+    for sample, row in (("sample_wall_time_s", "wall_time_s"), ("sample_sim_time_s", "sim_time_s")):
+        if not number(value.get(sample)) or value[sample] < 0:
+            return None
+        if frame is not None and (not number(frame.get(row)) or value[sample] > frame[row] + 1e-6):
+            return None
+    limits = value.get("range_m")
+    if not isinstance(limits, list) or len(limits) != 2 or not all(number(v) for v in limits) or limits != [.001, 20.0]:
+        return None
+    result = dict(RASTER_CONSTANTS, source_seq=seq, sample_wall_time_s=value["sample_wall_time_s"],
+                  sample_sim_time_s=value["sample_sim_time_s"], range_m=[.001, 20.0])
+    if full:
+        data = value.get("data")
+        if not isinstance(data, str) or len(data) != 153600 or any(c not in "0123456789abcdef" for c in data):
+            return None
+        result["data"] = data
+    elif "data" in value:
+        return None  # Pose rows must never carry the large raster.
+    return result
+
+
+def validate_native_record(payload):
+    record = bounded_json(payload, MAX_NATIVE_EVENT)
+    if isinstance(record, dict) and "kind" in record:
+        if (set(record) != {"schema_version", "kind", "depth_raster"} or
+                type(record["schema_version"]) is not int or record["schema_version"] != 1 or
+                record["kind"] != "depth-raster"):
+            raise ValueError("invalid native event")
+        raster = normalize_depth_raster(record["depth_raster"], full=True)
+        if raster is None:
+            raise ValueError("invalid native depth raster event")
+        return dict(schema_version=1, kind="depth-raster", depth_raster=raster)
+    return validate_frame(payload)  # The original 64 KiB pose limit is unchanged.
 
 
 class TelemetryReader:
@@ -165,13 +219,16 @@ class TelemetryReader:
         if self.stream.seek(0, 2) < self.offset:
             raise ValueError("native telemetry was truncated")
         self.stream.seek(self.offset)
-        data = self.stream.read(MAX_JSON + 1)
+        data = self.stream.read(MAX_NATIVE_EVENT + 1)
         self.offset += len(data)
         self.buffer += data
         result = []
         while b"\n" in self.buffer:
             line, self.buffer = self.buffer.split(b"\n", 1)
-            frame = validate_frame(line)
+            frame = validate_native_record(line)
+            if frame.get("kind") == "depth-raster":
+                result.append(frame)
+                continue
             if self.last is None:
                 if frame["seq"] != 0:
                     raise ValueError("native sequence must start at zero")
@@ -179,13 +236,13 @@ class TelemetryReader:
                 raise ValueError("native telemetry sequence/time regression")
             self.last = frame
             result.append(frame)
-        if len(self.buffer) > MAX_JSON:
+        if len(self.buffer) > MAX_NATIVE_EVENT:
             raise ValueError("native telemetry line size limit exceeded")
         return result
 
 import threading
 import time
-from collections import deque
+from collections import deque, OrderedDict
 from datetime import datetime, timezone
 
 
@@ -200,6 +257,7 @@ class StateStore:
             raise ValueError("invalid live telemetry history limit")
         self.lock = threading.RLock()
         self.history = deque(maxlen=history_limit)
+        self.depth_cache = OrderedDict()
         self.started = time.monotonic()
         self.updated = self.progress_at = None
         self.inactivity_timeout = inactivity_timeout
@@ -215,6 +273,7 @@ class StateStore:
     def begin(self, run_id):
         with self.lock:
             self.history.clear()
+            self.depth_cache.clear()
             self.data.update(status="starting", error=None, frame=None,
                              episode=dict(id=run_id, started_at=utcnow()))
             self.updated = self.progress_at = None
@@ -222,6 +281,18 @@ class StateStore:
 
     def publish(self, frame):
         with self.lock:
+            if frame.get("kind") == "depth-raster":
+                raster = normalize_depth_raster(frame.get("depth_raster"), full=True)
+                if raster is None:
+                    raise ValueError("invalid native depth raster event")
+                previous = self.depth_cache.get(raster["source_seq"])
+                if previous is not None and previous != raster:
+                    raise ValueError("conflicting depth source sequence")
+                self.depth_cache[raster["source_seq"]] = raster
+                self.depth_cache.move_to_end(raster["source_seq"])
+                while len(self.depth_cache) > MAX_DEPTH_CACHE:
+                    self.depth_cache.popitem(last=False)
+                return  # Sensor observations are not pose, receipt freshness or progress.
             previous = self.data["frame"]
             self.updated = time.monotonic()
             if previous is not None and frame["sim_time_s"] > previous["sim_time_s"]:
@@ -231,6 +302,15 @@ class StateStore:
             native_frame = normalize_frame(frame)
             self.data["frame"] = native_frame
             self.history.append((self.updated - self.started, native_frame))
+
+    def depth_raster(self, run_id, source_seq):
+        check_id(run_id)
+        if type(source_seq) is not int or not 0 <= source_seq <= 2**53 - 1:
+            raise ValueError("invalid depth source sequence")
+        with self.lock:
+            if not self.data["episode"] or self.data["episode"]["id"] != run_id:
+                return None
+            return copy.deepcopy(self.depth_cache.get(source_seq))
 
     def telemetry_snapshot(self, after_seq=None, episode_id=None):
         if after_seq is not None and (type(after_seq) is not int or not 0 <= after_seq <= 2**53 - 1):
@@ -559,6 +639,9 @@ class FlightSupervisor:
                     if self.stop.is_set():
                         raise InterruptedError("flight workload stopping")
                     for frame in reader.poll():
+                        if frame.get("kind") == "depth-raster":
+                            self.state.publish(frame)
+                            continue
                         now = time.monotonic()
                         if first_at is None:
                             first_at = last_progress = now
@@ -629,6 +712,7 @@ class FlightSupervisor:
 
 
 import mimetypes
+import gzip
 import tarfile
 import tempfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -679,13 +763,58 @@ def completed_telemetry(recordings, run_id):
     reader = TelemetryReader(io.BytesIO(payload))
     frames = []
     while reader.offset < len(payload):
-        frames.extend(normalize_frame(frame) for frame in reader.poll())
+        frames.extend(normalize_frame(frame) for frame in reader.poll() if frame.get("kind") != "depth-raster")
         if len(frames) > MAX_PLAYBACK_FRAMES:
             raise PlaybackTooLarge("telemetry playback frame limit exceeded")
     if reader.buffer or not frames:
         raise ValueError("incomplete telemetry artifact")
     return dict(schema_version=1, recording=manifest, provenance=provenance,
                 frames=frames, native_replay_verified=False)
+
+
+def recorded_depth_raster(recordings, run_id, source_seq, active=False):
+    """Bounded read of the existing JSONL, pinned against retention and symlinks."""
+    check_id(run_id)
+    if type(source_seq) is not int or not 0 <= source_seq <= 2**53 - 1:
+        raise ValueError("invalid depth source sequence")
+    with ExitStack() as stack:
+        with recordings.lock, recordings.open_run(run_id) as fd:
+            manifest = recordings.read_manifest(fd, run_id)
+            if not manifest["completed"] and not active:
+                raise PlaybackIncomplete("recording is not completed or active")
+            stream = stack.enter_context(os.fdopen(open_regular(fd, "telemetry.jsonl"), "rb"))
+            size = os.fstat(stream.fileno()).st_size
+            if size > MAX_PLAYBACK_BYTES:
+                raise PlaybackTooLarge("depth artifact byte limit exceeded")
+        # Never hold the recording lock while scanning. Do not read appended bytes.
+        remaining, found, previous, count = size, None, None, 0
+        while remaining:
+            line = stream.readline(min(MAX_NATIVE_EVENT + 2, remaining))
+            if not line:
+                raise ValueError("depth artifact was truncated")
+            remaining -= len(line)
+            if not line.endswith(b"\n"):
+                if len(line) > MAX_NATIVE_EVENT or remaining or manifest["completed"]:
+                    raise ValueError("incomplete or oversize depth artifact line")
+                break  # Active writer may be partway through its final row.
+            record = validate_native_record(line[:-1])
+            if record.get("kind") == "depth-raster":
+                raster = record["depth_raster"]
+                if raster["source_seq"] == source_seq:
+                    if found is not None and found != raster:
+                        raise ValueError("conflicting depth source sequence")
+                    found = raster
+            else:
+                if (previous is None and record["seq"] != 0 or previous is not None and
+                        (record["seq"] != previous["seq"] + 1 or record["sim_time_s"] < previous["sim_time_s"])):
+                    raise ValueError("native telemetry sequence/time regression")
+                previous = record
+                count += 1
+                if count > MAX_PLAYBACK_FRAMES:
+                    raise PlaybackTooLarge("depth artifact pose limit exceeded")
+        if found is None:
+            raise FileNotFoundError("depth source sequence not found")
+        return found
 
 
 @contextmanager
@@ -818,6 +947,26 @@ def make_server(state, recordings, web_root, host="0.0.0.0", port=8080, socket_t
             self.end_headers()
             self.wfile.write(payload)
 
+        def depth_response(self, raster):
+            # Opt-in exact gzip token only. Ambiguous/invalid/duplicate q-values fail closed.
+            accepted = []
+            for token in self.headers.get("Accept-Encoding", "").lower().split(","):
+                parts = [part.strip() for part in token.split(";")]
+                if parts[0] == "gzip":
+                    accepted.append(len(parts) == 1 or len(parts) == 2 and
+                                    re.fullmatch(r"q=(?:0(?:\.[0-9]{0,3})?|1(?:\.0{0,3})?)", parts[1]) is not None and
+                                    float(parts[1][2:]) > 0)
+            compressed = bool(accepted) and all(accepted)
+            payload = json.dumps(raster, allow_nan=False, separators=(",", ":")).encode()
+            if compressed:
+                payload = gzip.compress(payload, compresslevel=1, mtime=0)
+            self.response_headers(200, "application/json; charset=utf-8", len(payload))
+            self.send_header("Vary", "Accept-Encoding")
+            if compressed:
+                self.send_header("Content-Encoding", "gzip")
+            self.end_headers()
+            self.wfile.write(payload)
+
         def read_only(self):
             self.json_response(405, dict(error="read-only API; GET only"))
 
@@ -880,6 +1029,34 @@ def make_server(state, recordings, web_root, host="0.0.0.0", port=8080, socket_t
                         except (ValueError, OSError):
                             return self.json_response(400, dict(error="invalid telemetry artifact"))
                         return self.json_response(200, bundle)
+                    finally:
+                        recordings.playback_slot.release()
+                if path.startswith("/api/recordings/") and "/depth/" in path:
+                    # Encoded path components are never valid API identifiers.
+                    if path != urlsplit(self.path).path or urlsplit(self.path).query:
+                        raise ValueError("encoded or non-exact depth path")
+                    match = re.fullmatch(r"/api/recordings/([^/]+)/depth/(0|[1-9][0-9]{0,15})", path)
+                    if match is None:
+                        raise ValueError("invalid depth resource")
+                    run_id, cursor = match.groups()
+                    check_id(run_id)
+                    source_seq = int(cursor)
+                    if source_seq > 2**53 - 1:
+                        raise ValueError("invalid depth source sequence")
+                    if not recordings.playback_slot.acquire(blocking=False):
+                        return self.json_response(429, dict(error="telemetry readers busy"))
+                    try:
+                        raster = state.depth_raster(run_id, source_seq)
+                        if raster is None:
+                            episode = state.snapshot()["episode"]
+                            try:
+                                raster = recorded_depth_raster(recordings, run_id, source_seq,
+                                                               active=bool(episode and episode["id"] == run_id))
+                            except PlaybackIncomplete as error:
+                                return self.json_response(409, dict(error=str(error)))
+                            except PlaybackTooLarge as error:
+                                return self.json_response(413, dict(error=str(error)))
+                        return self.depth_response(raster)
                     finally:
                         recordings.playback_slot.release()
                 if path.startswith("/api/recordings/") and path.endswith("/download"):

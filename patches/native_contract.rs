@@ -70,6 +70,39 @@ pub fn depth_preview_json(
     ))
 }
 
+/// Full-resolution CPU observation of the same completed SimZed depth handle.
+/// Return small pose metadata separately from the one-per-sample raster event.
+/// Times identify sampling, not an unavailable sensor acquisition timestamp.
+pub fn depth_raster_json(
+    mm: &[u16], width: usize, height: usize, source_seq: u64,
+    sample_sim_time_s: f64, sample_wall_time_s: f64,
+) -> Option<(String, String)> {
+    if width != 320 || height != 240 || width.checked_mul(height) != Some(mm.len())
+        || !sample_sim_time_s.is_finite() || !sample_wall_time_s.is_finite() {
+        return None;
+    }
+    let mut data = String::with_capacity(width * height * 2);
+    let mut valid = false;
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    for &raw in mm {
+        let raw = raw as u32;
+        let q = if (1..=20000).contains(&raw) {
+            valid = true;
+            1 + ((raw - 1) * 254 + 9999) / 19999
+        } else { 0 };
+        data.push(HEX[(q >> 4) as usize] as char);
+        data.push(HEX[(q & 15) as usize] as char);
+    }
+    if !valid { return None; }
+    let metadata = format!(
+        "{{\"source\":\"SimZedFrameStore.depth/Copper.ZedSource\",\"source_seq\":{source_seq},\"source_width\":{width},\"source_height\":{height},\"sample_wall_time_s\":{sample_wall_time_s},\"sample_sim_time_s\":{sample_sim_time_s},\"width\":320,\"height\":240,\"encoding\":\"u8-hex\",\"sampling\":\"identity\",\"source_units\":\"millimetres\",\"range_m\":[0.001,20.0],\"invalid_u8\":0,\"invalid_rule\":\"source_mm == 0 or source_mm > 20000\",\"decode_m\":\"(1 + (q - 1) * 19999 / 254) / 1000; q=0 invalid\"}}"
+    );
+    let mut full = metadata.clone();
+    full.pop();
+    full.push_str(&format!(",\"data\":\"{data}\"}}"));
+    Some((metadata, full))
+}
+
 pub struct Snapshot<'a> {
     pub seq: u64,
     pub sim_time_s: f64,
