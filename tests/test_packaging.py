@@ -20,6 +20,22 @@ class PackagedImageTests(unittest.TestCase):
                          'the measured 12-second log footprint does not establish that 45 seconds fit 4 GiB')
 
 
+    def test_unprivileged_service_can_read_every_declared_static_asset(self):
+        script = '''import json,pathlib
+root=pathlib.Path('/opt/copper-flight/www')
+routes=json.loads((root/'static-routes.json').read_text())['static_routes']
+for route in routes:
+ with (root/route.lstrip('/')).open('rb') as stream:
+  assert stream.read(1), route
+print(json.dumps({'readable_static_routes':len(routes)}))
+'''
+        result = subprocess.run(
+            ['docker', 'run', '--rm', '--network', 'none', '--user', '10001:10001',
+             '--entrypoint', 'python3', os.environ['FLIGHT_IMAGE'], '-c', script],
+            capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertGreater(json.loads(result.stdout)['readable_static_routes'], 0)
+
     def test_nvidia_surface_free_driver_has_its_runtime_egl_vendor_closure(self):
         metadata = json.loads(subprocess.check_output(
             ['docker', 'image', 'inspect', os.environ['FLIGHT_IMAGE']], text=True))[0]

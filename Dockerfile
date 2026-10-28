@@ -119,6 +119,8 @@ COPY service.py boot.py /opt/copper-flight/
 COPY runtime/ /opt/copper-flight/runtime/
 COPY scripts/start-flight scripts/run-native-flight /opt/copper-flight/scripts/
 COPY www/ /opt/copper-flight/www/
+# Keep offline assets readable after private source-archive extraction.
+RUN chmod -R a+rX /opt/copper-flight/www
 RUN groupadd --gid 10001 copper-flight \
     && useradd --uid 10001 --gid 10001 --no-create-home --home-dir /data/copper-flight --shell /usr/sbin/nologin copper-flight \
     && chmod 0555 /opt/copper-flight/scripts/start-flight /opt/copper-flight/scripts/run-native-flight \

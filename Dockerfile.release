@@ -13,5 +13,7 @@ COPY service.py boot.py /opt/copper-flight/
 COPY runtime/ /opt/copper-flight/runtime/
 COPY --chmod=0555 scripts/start-flight scripts/run-native-flight /opt/copper-flight/scripts/
 COPY www/ /opt/copper-flight/www/
+# Source exports can carry private directory modes; the service drops to UID 10001.
+RUN chmod -R a+rX /opt/copper-flight/www
 COPY Cargo.lock native-source.lock.json native-assets.lock.json native-contract.md /opt/copper-flight/provenance/
 COPY patches/ /opt/copper-flight/provenance/patches/
